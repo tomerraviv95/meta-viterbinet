@@ -37,6 +37,7 @@ class VADetector(nn.Module):
 
         super(VADetector, self).__init__()
         self.start_state = 0
+        self.memory_length = 4
         self.transmission_length = transmission_length
         self.n_states = n_states
         self.transition_table_array = create_transition_table(n_states)
@@ -69,11 +70,14 @@ class VADetector(nn.Module):
         # set initial probabilities
         self.initial_in_prob = torch.zeros((self.batch_size, self.n_states)).to(device)
 
-        previous_states = torch.zeros([self.batch_size, self.n_states, self.transmission_length]).to(device)
-        out_prob_mat = torch.zeros([self.batch_size, self.n_states, self.transmission_length]).to(device)
+        previous_states = torch.zeros(
+            [self.batch_size, self.n_states, self.transmission_length + self.memory_length]).to(device)
+        out_prob_mat = torch.zeros(
+            [self.batch_size, self.n_states, self.transmission_length + self.memory_length]).to(
+            device)
         in_prob = self.initial_in_prob.clone()
 
-        for i in range(self.transmission_length):
+        for i in range(self.transmission_length + self.memory_length):
             out_prob, inds = self.basic_layer(in_prob, y[:, i])
             # update the previous state (each index corresponds to the state out of the total n_states)
             previous_states[:, :, i] = self.transition_table[
@@ -92,15 +96,13 @@ class VADetector(nn.Module):
         if phase == 'val':
             # trace back unit
             most_likely_state = self.start_state
-            ml_path_bits = torch.zeros([self.batch_size, self.transmission_length]).to(device)
+            ml_path_bits = torch.zeros([self.batch_size, self.transmission_length + self.memory_length]).to(device)
 
             # traceback - loop on all stages, from last to first, saving the most likely path
-            for i in range(self.transmission_length - 1, -1, -1):
-                ml_path_bits[:, i] = (most_likely_state + 1) % 2
+            for i in range(self.transmission_length + self.memory_length - 1, -1, -1):
                 most_likely_state = self.previous_states[torch.arange(self.batch_size), most_likely_state, i].long()
+                ml_path_bits[:, i] = (most_likely_state >= self.n_states // 2)
 
-            decoded_words = ml_path_bits[:, :]
-
-            return decoded_words
+            return ml_path_bits[:, :-self.memory_length]
         else:
             raise NotImplementedError("No implemented training for this decoder!!!")

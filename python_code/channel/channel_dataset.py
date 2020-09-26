@@ -42,7 +42,7 @@ class ChannelModelDataset(Dataset):
             database = []
         b_full = np.empty((0, self.transmission_length))
         c_full = np.empty((0, self.transmission_length))
-        y_full = np.empty((0, self.transmission_length + self.memory_length - 1))
+        y_full = np.empty((0, self.transmission_length + self.memory_length))
         # accumulate words until reaches desired number
         while y_full.shape[0] < self.batch_size:
             # random word generation

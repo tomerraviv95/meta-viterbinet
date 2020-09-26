@@ -2,8 +2,8 @@
 run_name: 'test'
 
 # coding parameters
-block_length: 223
-channel_blocks: 8
+block_length: 100
+channel_blocks: 1
 code_length: 255
 use_ecc: False
 memory_length: 4
@@ -18,10 +18,10 @@ lr: 0.001 # learning rate
 load_from_checkpoint: False # loads last checkpoint, if exists in the run_name folder
 
 # validation hyperparameters
-val_minibatch_size: 1000 # the more the merrier
-val_SNR_start: -1
-val_SNR_end: -1
-thresh_errors: 100 # monte-carlo error threshold per point
+val_minibatch_size: 10000 # the more the merrier
+val_SNR_start: 2
+val_SNR_end: 2
+thresh_errors: 1 # monte-carlo error threshold per point
 
 # seed
 noise_seed: 345002

@@ -20,14 +20,16 @@ class ISIAWGNChannel:
         """
 
         memory_size = 4
-        gamma = 2
-        w_sigma = 1
+        gamma = 0.2
+        w_sigma = 0.1
 
         h = np.reshape(np.exp(-gamma * np.arange(memory_size)), [1, memory_size])
 
         SNR_value = 10 ** (SNR / 10)
 
-        conv_out = signal.convolve(s, h)
+        padded_s = np.concatenate([np.zeros([s.shape[0], memory_size+1]), s, np.ones([s.shape[0], memory_size])], axis=1)
+
+        conv_out = signal.convolve2d(padded_s, h, 'same')[:,memory_size:-1]
 
         [row, col] = conv_out.shape
 
@@ -35,6 +37,6 @@ class ISIAWGNChannel:
 
         y = math.sqrt(SNR_value) * conv_out + w
 
-        llr = 2 * y / w_sigma ** 2
+        llr = 2 * y * SNR_value / w_sigma ** 2
 
         return llr

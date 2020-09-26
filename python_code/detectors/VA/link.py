@@ -25,10 +25,9 @@ class Link(nn.Module):
                                          dim=0).float().to(device)
 
     def create_llrs_to_edges_matrix(self):
-        flattened_transition_table = self.transition_table_array.reshape(-1, 1)
-        binary_flattened_table = np.unpackbits(flattened_transition_table, axis=1)
-        binary_output_per_edge = binary_flattened_table[:, -1].reshape(1,-1)
-        self.llrs_to_edges = torch.Tensor((-1) ** binary_output_per_edge).to(device)
+        input_bit_per_edge = np.tile([0,1],self.n_states)
+        modulated_input_per_edge = 1 - 2 * input_bit_per_edge.reshape(1,-1)
+        self.llrs_to_edges = torch.Tensor(modulated_input_per_edge).to(device)
 
     def compare_select(self, x: torch.Tensor) -> [torch.Tensor, torch.LongTensor]:
         """
