@@ -18,15 +18,23 @@ class ISIAWGNChannel:
         :param use_llr: whether llr values or magnitude
         :return: received word
         """
-        [row, col] = s.shape
 
         memory_size = 4
-        gamma = 0.2
+        gamma = 2
+        w_sigma = 1
 
         h = np.reshape(np.exp(-gamma * np.arange(memory_size)), [1, memory_size])
 
-        w = random.normal(0.0, 1.0, (row, col))
+        SNR_value = 10 ** (SNR / 10)
 
-        y = math.sqrt(SNR) * signal.convolve(s, h) + w
+        conv_out = signal.convolve(s, h)
 
-        return y
+        [row, col] = conv_out.shape
+
+        w = random.normal(0, w_sigma, (row, col))
+
+        y = math.sqrt(SNR_value) * conv_out + w
+
+        llr = 2 * y / w_sigma ** 2
+
+        return llr

@@ -1,0 +1,28 @@
+# general
+run_name: 'test'
+
+# coding parameters
+block_length: 223
+channel_blocks: 8
+code_length: 255
+use_ecc: False
+memory_length: 4
+
+# train hyperparameters
+num_of_minibatches: 100
+train_minibatch_size: 100 # should be big enough
+train_SNR_start: -2
+train_SNR_end: 0
+train_num_SNR: 3 # how many equally spaced values, including edges
+lr: 0.001 # learning rate
+load_from_checkpoint: False # loads last checkpoint, if exists in the run_name folder
+
+# validation hyperparameters
+val_minibatch_size: 1000 # the more the merrier
+val_SNR_start: -1
+val_SNR_end: -1
+thresh_errors: 100 # monte-carlo error threshold per point
+
+# seed
+noise_seed: 345002
+word_seed: 786002

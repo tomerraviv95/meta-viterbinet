@@ -17,22 +17,22 @@ class ChannelModelDataset(Dataset):
     Dataset object for the channel. Used in training and evaluation to draw minibatches of channel words.
     """
 
-    def __init__(self,
-                 block_length: int,
+    def __init__(self, transmission_length: int,
                  batch_size: int,
-                 snr_range: List[int],
+                 snr_range: np.ndarray,
                  random: mtrand.RandomState,
                  word_rand_gen: mtrand.RandomState,
-                 code_gm: np.ndarray):
+                 use_ecc: bool):
 
-        self.block_length = block_length
+        self.transmission_length = transmission_length
         self.word_rand_gen = word_rand_gen if word_rand_gen else np.random.RandomState()
         self.random = random if random else np.random.RandomState()
         self.modulation = BPSKModulator
         self.channel = ISIAWGNChannel
         self.batch_size = batch_size
         self.snr_range = snr_range
-        if False:
+        self.memory_length = 4
+        if use_ecc:
             self.encoding = lambda b: (np.dot(b, code_gm) % 2)
         else:
             self.encoding = lambda b: b
@@ -40,20 +40,20 @@ class ChannelModelDataset(Dataset):
     def get_snr_data(self, snr: int, database: list):
         if database is None:
             database = []
-        b_full = torch.empty((0, self.block_length)).to(device=device)
-        c_full = torch.empty((0, self.code_length)).to(device=device)
-        y_full = torch.empty((0, self.code_length)).to(device=device)
+        b_full = np.empty((0, self.transmission_length))
+        c_full = np.empty((0, self.transmission_length))
+        y_full = np.empty((0, self.transmission_length + self.memory_length - 1))
         # accumulate words until reaches desired number
         while y_full.shape[0] < self.batch_size:
             # random word generation
             # generate word
-            b = self.word_rand_gen.randint(0, 2, size=(self.batch_size, self.block_length))
+            b = self.word_rand_gen.randint(0, 2, size=(self.batch_size, self.transmission_length))
             # encoding - errors correction code
             c = self.encoding(b)
             # modulation
             s = self.modulation.modulate(c)
             # transmit through noisy channel
-            y = self.channel.transmit(s=s, SNR=snr, random=self.random).float()
+            y = self.channel.transmit(s=s, SNR=snr, random=self.random)
 
             # accumulate
             b_full = np.concatenate((b_full, b), axis=0)
