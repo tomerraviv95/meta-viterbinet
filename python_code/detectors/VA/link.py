@@ -55,15 +55,18 @@ class Link(nn.Module):
         :return: current stage probabilities, [batch_size,n_states]
         """
         A = torch.mm(in_prob, self.states_to_edges)
-        B = torch.mm(llrs.reshape(-1, 1), self.llrs_to_edges)
+        B = torch.mm(llrs.reshape(-1, 1), torch.ones([1, 32]).to(device))
 
-        # gamma = 0.2
-        # SNR = -2
-        # SNR_value = 10 ** (SNR / 10)
-        # h_tilde = np.reshape(np.exp(-gamma * np.arange(self.memory_length))[1:], [1, self.memory_length - 1])
-        # last_bits_mat = self.create_last_bits_mat()
-        # isi = np.sum((1 - 2 * last_bits_mat.astype(int)) * h_tilde, axis=1).reshape(1, -1)
-        # isi_tensor = torch.Tensor(math.sqrt(SNR_value) * isi).to(device)
-        # if i >= 3:
-        #     B += isi_tensor
-        return self.compare_select(A + B)
+        gamma = 0.2
+        SNR = 8
+        SNR_value = 10 ** (SNR / 10)
+        h_tilde = np.reshape(np.exp(-gamma * np.arange(self.memory_length))[1:], [1, self.memory_length - 1])
+        last_bits_mat = self.create_last_bits_mat()
+        s = (1 - 2 * last_bits_mat.astype(int))
+        new_s = np.concatenate([s[:,:min(i,3)], np.zeros([2*self.n_states,max(3-i,0)])],axis=1)[:,:self.memory_length-1]
+        isi = np.sum(new_s * h_tilde, axis=1).reshape(1, -1)
+        isi_tensor = torch.Tensor(math.sqrt(SNR_value) * isi).to(device)
+        B -= isi_tensor
+
+        B2 = B * self.llrs_to_edges
+        return self.compare_select(A + B2)

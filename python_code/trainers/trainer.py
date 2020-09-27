@@ -228,7 +228,7 @@ class Trainer(object):
 
         # decode and calculate accuracy
         decoded_words = self.decoder(received_words, 'val')
-
+        print(transmitted_words[0])
         ber, fer, err_indices = calculate_error_rates(decoded_words, transmitted_words)
         current_err_count = err_indices.shape[0]
 

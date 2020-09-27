@@ -1,3 +1,7 @@
+import math
+
+from scipy import signal
+
 from python_code.detectors.VA.link import Link
 import itertools
 import numpy as np
@@ -102,7 +106,6 @@ class VADetector(nn.Module):
             for i in range(self.transmission_length + self.memory_length - 1, -1, -1):
                 most_likely_state = self.previous_states[torch.arange(self.batch_size), most_likely_state, i].long()
                 ml_path_bits[:, i] = (most_likely_state >= self.n_states // 2)
-
             return ml_path_bits[:, :-self.memory_length]
         else:
             raise NotImplementedError("No implemented training for this decoder!!!")

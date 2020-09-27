@@ -39,7 +39,7 @@ class ISIAWGNChannel:
         isi = signal.convolve2d(padded_s, h_tilde, 'same')[:, memory_length:-1]
         conv_out_tilde = (conv_out - isi)
 
-        y = math.sqrt(SNR_value) * conv_out_tilde + w
+        y = math.sqrt(SNR_value) * conv_out + w
 
         return y
 
