@@ -78,7 +78,7 @@ class VADetector(nn.Module):
         in_prob = self.initial_in_prob.clone()
 
         for i in range(self.transmission_length + self.memory_length):
-            out_prob, inds = self.basic_layer(in_prob, y[:, i])
+            out_prob, inds = self.basic_layer(in_prob, y[:, i], i)
             # update the previous state (each index corresponds to the state out of the total n_states)
             previous_states[:, :, i] = self.transition_table[
                 torch.arange(self.n_states).repeat(self.batch_size, 1), inds]

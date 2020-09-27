@@ -34,8 +34,37 @@ class ISIAWGNChannel:
 
         w = random.normal(0, W_SIGMA, (row, col))
 
-        y = math.sqrt(SNR_value) * conv_out + w
+        h_tilde = h.copy()
+        h_tilde[:,0] = 0
+        isi = signal.convolve2d(padded_s, h_tilde, 'same')[:, memory_length:-1]
+        conv_out_tilde = (conv_out - isi)
 
-        llr = 2 * y * SNR_value / W_SIGMA ** 2
+        y = math.sqrt(SNR_value) * conv_out_tilde + w
 
-        return llr
+        return y
+
+
+class PoissonChannel:
+    @staticmethod
+    def transmit(s: np.ndarray, SNR: int, random: mtrand.RandomState, gamma: float, memory_length: int):
+        """
+        The AWGN Channel
+        :param s: to transmit symbol words
+        :param SNR: signal-to-noise value
+        :param random: random words generator
+        :param use_llr: whether llr values or magnitude
+        :return: received word
+        """
+
+        h = np.reshape(np.exp(-gamma * np.arange(memory_length)), [1, memory_length])
+
+        SNR_value = 10 ** (SNR / 10)
+
+        padded_s = np.concatenate([np.zeros([s.shape[0], memory_length + 1]), s, np.zeros([s.shape[0], memory_length])],
+                                  axis=1)
+
+        conv_out = signal.convolve2d(padded_s, h, 'same')[:, memory_length:-1]
+
+        y = np.random.poisson(math.sqrt(SNR_value) * conv_out + 1)
+
+        return y

@@ -14,6 +14,7 @@ class Link(nn.Module):
         self.n_states = n_states
         self.transition_table_array = transition_table_array
         self.transition_table = torch.Tensor(transition_table_array)
+        self.memory_length = 4
         super().__init__()
 
         # create matrices
@@ -25,9 +26,14 @@ class Link(nn.Module):
                                          dim=0).float().to(device)
 
     def create_llrs_to_edges_matrix(self):
-        input_bit_per_edge = np.tile([0,1],self.n_states)
-        modulated_input_per_edge = 1 - 2 * input_bit_per_edge.reshape(1,-1)
+        input_bit_per_edge = np.tile([0, 1], self.n_states)
+        modulated_input_per_edge = 1 - 2 * input_bit_per_edge.reshape(1, -1)
         self.llrs_to_edges = torch.Tensor(modulated_input_per_edge).to(device)
+
+    def create_last_bits_mat(self):
+        binary_bits_mat = np.unpackbits(np.repeat(np.arange(self.n_states), 2).astype(np.uint8).reshape(-1, 1), axis=1)
+        only_memory_length_last_bits = binary_bits_mat[:, -self.memory_length:-1]
+        return only_memory_length_last_bits
 
     def compare_select(self, x: torch.Tensor) -> [torch.Tensor, torch.LongTensor]:
         """
@@ -41,7 +47,7 @@ class Link(nn.Module):
         max_values, absolute_max_ind = torch.max(reshaped_x, 2)
         return max_values, absolute_max_ind
 
-    def forward(self, in_prob: torch.Tensor, llrs: torch.Tensor) -> [torch.Tensor, torch.LongTensor]:
+    def forward(self, in_prob: torch.Tensor, llrs: torch.Tensor, i: int) -> [torch.Tensor, torch.LongTensor]:
         """
         Viterbi ACS block
         :param in_prob: last stage probabilities, [batch_size,n_states]
@@ -49,5 +55,15 @@ class Link(nn.Module):
         :return: current stage probabilities, [batch_size,n_states]
         """
         A = torch.mm(in_prob, self.states_to_edges)
-        B = torch.mm(llrs.reshape(-1,1), self.llrs_to_edges)
+        B = torch.mm(llrs.reshape(-1, 1), self.llrs_to_edges)
+
+        # gamma = 0.2
+        # SNR = -2
+        # SNR_value = 10 ** (SNR / 10)
+        # h_tilde = np.reshape(np.exp(-gamma * np.arange(self.memory_length))[1:], [1, self.memory_length - 1])
+        # last_bits_mat = self.create_last_bits_mat()
+        # isi = np.sum((1 - 2 * last_bits_mat.astype(int)) * h_tilde, axis=1).reshape(1, -1)
+        # isi_tensor = torch.Tensor(math.sqrt(SNR_value) * isi).to(device)
+        # if i >= 3:
+        #     B += isi_tensor
         return self.compare_select(A + B)

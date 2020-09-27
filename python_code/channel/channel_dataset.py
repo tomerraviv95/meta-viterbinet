@@ -7,8 +7,8 @@ import torch
 from numpy.random import mtrand
 from torch.utils.data import Dataset
 from typing import Tuple, List
-from python_code.channel.channel import ISIAWGNChannel
-from python_code.channel.modulator import BPSKModulator
+from python_code.channel.channel import ISIAWGNChannel, PoissonChannel
+from python_code.channel.modulator import BPSKModulator, OnOffModulator
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 MAX_WORKERS = 16
@@ -61,6 +61,12 @@ class ChannelModelDataset(Dataset):
                 s = BPSKModulator.modulate(c)
                 # transmit through noisy channel
                 y = ISIAWGNChannel.transmit(s=s, SNR=snr, random=self.random, gamma=gamma,
+                                            memory_length=self.memory_length)
+            elif self.channel_type == 'Poisson':
+                # modulation
+                s = OnOffModulator.modulate(c)
+                # transmit through noisy channel
+                y = PoissonChannel.transmit(s=s, SNR=snr, random=self.random, gamma=gamma,
                                             memory_length=self.memory_length)
             else:
                 raise Exception('No such channel defined!!!')
