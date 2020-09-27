@@ -7,6 +7,7 @@ channel_blocks: 1
 code_length: 255
 use_ecc: False
 memory_length: 4
+channel_type: 'ISI_AWGN'
 
 # train hyperparameters
 num_of_minibatches: 100
@@ -20,8 +21,11 @@ load_from_checkpoint: False # loads last checkpoint, if exists in the run_name f
 # validation hyperparameters
 val_minibatch_size: 10000 # the more the merrier
 val_SNR_start: 2
-val_SNR_end: 2
-thresh_errors: 1 # monte-carlo error threshold per point
+val_SNR_end: 3
+gamma_start: 0.1
+gamma_end: 2
+gamma_num: 10
+thresh_errors: 1000 # monte-carlo error threshold per point
 
 # seed
 noise_seed: 345002

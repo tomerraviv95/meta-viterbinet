@@ -28,6 +28,7 @@ class Trainer(object):
         self.code_length = None
         self.use_ecc = None
         self.memory_length = None
+        self.channel_type = None
 
         # training hyperparameters
         self.num_of_minibatches = None
@@ -41,6 +42,9 @@ class Trainer(object):
         self.val_minibatch_size = None  # the more the merrier :)
         self.val_SNR_start = None
         self.val_SNR_end = None
+        self.gamma_start = None
+        self.gamma_end = None
+        self.gamma_num = None
         self.thresh_errors = None  # monte-carlo error threshold per point
 
         # seed
@@ -124,11 +128,15 @@ class Trainer(object):
         """
         self.snr_range = {'train': np.arange(self.train_SNR_start, self.train_SNR_end + 1),
                           'val': np.arange(self.val_SNR_start, self.val_SNR_end + 1)}
+        self.gamma_range = np.linspace(self.gamma_start, self.gamma_end, self.gamma_num)
         self.batches_size = {'train': self.train_minibatch_size, 'val': self.val_minibatch_size}
         self.channel_dataset = {
-            phase: ChannelModelDataset(transmission_length=self.transmission_length,
+            phase: ChannelModelDataset(channel_type=self.channel_type,
+                                       transmission_length=self.transmission_length,
                                        batch_size=self.batches_size[phase],
                                        snr_range=self.snr_range[phase],
+                                       gamma_range=self.gamma_range,
+                                       memory_length=self.memory_length,
                                        random=self.rand_gen,
                                        word_rand_gen=self.word_rand_gen,
                                        use_ecc=self.use_ecc)
@@ -170,32 +178,51 @@ class Trainer(object):
         ber_total, fer_total = np.zeros(len(self.snr_range['val'])), np.zeros(len(self.snr_range['val']))
         with torch.no_grad():
             for snr_ind, snr in enumerate(self.snr_range['val']):
-                err_count = 0
-                runs_num = 0
                 print(f'Starts evaluation at snr {snr}')
                 start = time()
-                # either stop when simulated enough errors, or reached a maximum number of runs
-                while err_count < self.thresh_errors and runs_num < MAX_RUNS:
-                    ber, fer, current_err_count = self.single_eval(snr_ind)
-                    ber_total[snr_ind] += ber
-                    fer_total[snr_ind] += fer
-                    err_count += current_err_count
-                    runs_num += 1.0
 
-                ber_total[snr_ind] /= runs_num
-                fer_total[snr_ind] /= runs_num
+                ber_snr, fer_snr = self.single_snr_eval(snr_ind)
+                ber_total[snr_ind] = ber_snr
+                fer_total[snr_ind] = fer_snr
                 print(f'Done. time: {time() - start}, ber: {ber_total[snr_ind]}, fer: {fer_total[snr_ind]}')
 
         return ber_total, fer_total
 
-    def single_eval(self, snr_ind: int) -> Tuple[float, float, int]:
+    def single_snr_eval(self, snr_ind: int):
+        ber_snr, fer_snr = 0, 0
+        for gamma_ind, gamma in enumerate(self.gamma_range):
+            runs_num, err_count = 0, 0
+            ber_gamma, fer_gamma = 0, 0
+            # either stop when simulated enough errors, or reached a maximum number of runs
+            while err_count < self.thresh_errors and runs_num < MAX_RUNS:
+                ber, fer, current_err_count = self.single_eval(snr_ind, gamma_ind)
+                ber_gamma += ber
+                fer_gamma += fer
+                err_count += current_err_count
+                runs_num += 1.0
+
+            # get ber and fer per gamma accurately by dividing the number of required runs
+            ber_gamma /= runs_num
+            fer_gamma /= runs_num
+
+            # at last sum all gamma runs together
+            ber_snr += ber_gamma
+            fer_snr += fer_gamma
+
+        # divide by the number of different gamma values
+        ber_snr /= self.gamma_num
+        fer_snr /= self.gamma_num
+        return ber_snr, fer_snr
+
+    def single_eval(self, snr_ind: int, gamma_ind: int) -> Tuple[float, float, int]:
         """
         Evaluation at a single snr.
         :param snr_ind: indice of snr in the snrs vector
         :return: ber and fer for batch, average iterations per word and number of errors in current batch
         """
         # create state_estimator_morning data
-        transmitted_words, received_words = iter(self.channel_dataset['val'][snr_ind])
+        transmitted_words, received_words = self.channel_dataset['val'].__getitem__(snr_ind=snr_ind,
+                                                                                    gamma_ind=gamma_ind)
         transmitted_words = transmitted_words.to(device=device)
         received_words = received_words.to(device=device)
 
