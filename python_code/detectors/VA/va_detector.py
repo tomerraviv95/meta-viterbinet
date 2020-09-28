@@ -2,6 +2,7 @@ import math
 
 from scipy import signal
 
+from python_code.channel.modulator import BPSKModulator
 from python_code.detectors.VA.link import Link
 import itertools
 import numpy as np
@@ -81,14 +82,21 @@ class VADetector(nn.Module):
             device)
         in_prob = self.initial_in_prob.clone()
 
+        prev_mat = np.zeros([self.batch_size, 3, 16])
+
         for i in range(self.transmission_length + self.memory_length):
-            out_prob, inds = self.basic_layer(in_prob, y[:, i], i)
+
+            out_prob, inds = self.basic_layer(in_prob, y[:, i], i, prev_mat)
             # update the previous state (each index corresponds to the state out of the total n_states)
             previous_states[:, :, i] = self.transition_table[
                 torch.arange(self.n_states).repeat(self.batch_size, 1), inds]
             out_prob_mat[:, :, i] = out_prob
             # update in-probabilities for next layer, clipping above and below thresholds
             in_prob = out_prob
+
+            prev_mat[:, 2] = prev_mat[:, 1]
+            prev_mat[:, 1] = prev_mat[:, 0]
+            prev_mat[:, 0] = BPSKModulator.modulate(inds.cpu().numpy())
 
         self.previous_states = previous_states
 

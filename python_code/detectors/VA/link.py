@@ -47,7 +47,7 @@ class Link(nn.Module):
         max_values, absolute_max_ind = torch.max(reshaped_x, 2)
         return max_values, absolute_max_ind
 
-    def forward(self, in_prob: torch.Tensor, llrs: torch.Tensor, i: int) -> [torch.Tensor, torch.LongTensor]:
+    def forward(self, in_prob: torch.Tensor, llrs: torch.Tensor, i: int,prev_mat) -> [torch.Tensor, torch.LongTensor]:
         """
         Viterbi ACS block
         :param in_prob: last stage probabilities, [batch_size,n_states]
@@ -63,9 +63,13 @@ class Link(nn.Module):
         h_tilde = np.reshape(np.exp(-gamma * np.arange(self.memory_length))[1:], [1, self.memory_length - 1])
         last_bits_mat = self.create_last_bits_mat()
         s = (1 - 2 * last_bits_mat.astype(int))
-        new_s = np.concatenate([s[:,:min(i,3)], np.zeros([2*self.n_states,max(3-i,0)])],axis=1)[:,:self.memory_length-1]
+        new_s = np.concatenate([s[:, :min(i, 3)], np.zeros([2 * self.n_states, max(3 - i, 0)])], axis=1)[:,
+                :self.memory_length - 1]
         isi = np.sum(new_s * h_tilde, axis=1).reshape(1, -1)
         isi_tensor = torch.Tensor(math.sqrt(SNR_value) * isi).to(device)
+        if i == 7:
+            l = 1
+
         B -= isi_tensor
 
         B2 = B * self.llrs_to_edges
