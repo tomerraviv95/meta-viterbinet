@@ -20,12 +20,12 @@ load_from_checkpoint: False # loads last checkpoint, if exists in the run_name f
 
 # validation hyperparameters
 val_minibatch_size: 10000 # the more the merrier
-val_SNR_start: 8
-val_SNR_end: 8
-gamma_start: 0.2
-gamma_end: 0.2
-gamma_num: 1
-thresh_errors: 1000 # monte-carlo error threshold per point
+val_SNR_start: -6
+val_SNR_end: 10
+gamma_start: 0.1
+gamma_end: 2
+gamma_num: 20
+thresh_errors: 200 # monte-carlo error threshold per point
 
 # seed
 noise_seed: 345002

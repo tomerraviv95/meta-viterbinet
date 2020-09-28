@@ -54,18 +54,18 @@ class VADetector(nn.Module):
         self.basic_layer = Link(n_states=self.n_states,
                                 transition_table_array=self.transition_table_array).to(device)
 
-    def forward(self, y: torch.Tensor, phase: str) -> torch.Tensor:
+    def forward(self, y: torch.Tensor, phase: str,snr,gamma) -> torch.Tensor:
         """
         The circular Viterbi algorithm
         :param y: input llrs (batch)
         :param phase: 'val' or 'train'
         :return: batch of decoded binary words
         """
-        self.run(y)
+        self.run(y,snr,gamma)
         estimated_word = self.traceback(phase)
         return estimated_word
 
-    def run(self, y: torch.Tensor):
+    def run(self, y: torch.Tensor,snr,gamma):
         """
         The forward pass of the Viterbi algorithm
         :param y: input values (batch)
@@ -82,11 +82,10 @@ class VADetector(nn.Module):
             device)
         in_prob = self.initial_in_prob.clone()
 
-        prev_mat = np.zeros([self.batch_size, 3, 16])
+        previous_symbols_per_state = np.zeros([self.batch_size, self.memory_length - 1, self.n_states])
 
         for i in range(self.transmission_length + self.memory_length):
-
-            out_prob, inds = self.basic_layer(in_prob, y[:, i], i, prev_mat)
+            out_prob, inds = self.basic_layer(in_prob, y[:, i], previous_symbols_per_state,snr,gamma)
             # update the previous state (each index corresponds to the state out of the total n_states)
             previous_states[:, :, i] = self.transition_table[
                 torch.arange(self.n_states).repeat(self.batch_size, 1), inds]
@@ -94,9 +93,9 @@ class VADetector(nn.Module):
             # update in-probabilities for next layer, clipping above and below thresholds
             in_prob = out_prob
 
-            prev_mat[:, 2] = prev_mat[:, 1]
-            prev_mat[:, 1] = prev_mat[:, 0]
-            prev_mat[:, 0] = BPSKModulator.modulate(inds.cpu().numpy())
+            previous_symbols_per_state[:, 2] = previous_symbols_per_state[:, 1]
+            previous_symbols_per_state[:, 1] = previous_symbols_per_state[:, 0]
+            previous_symbols_per_state[:, 0] = BPSKModulator.modulate(inds.cpu().numpy())
 
         self.previous_states = previous_states
 

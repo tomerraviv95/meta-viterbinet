@@ -188,7 +188,7 @@ class Trainer(object):
 
         return ber_total, fer_total
 
-    def single_snr_eval(self, snr_ind: int):
+    def single_snr_eval(self, snr_ind: int) -> Tuple[float, float]:
         ber_snr, fer_snr = 0, 0
         for gamma_ind, gamma in enumerate(self.gamma_range):
             runs_num, err_count = 0, 0
@@ -227,8 +227,7 @@ class Trainer(object):
         received_words = received_words.to(device=device)
 
         # decode and calculate accuracy
-        decoded_words = self.decoder(received_words, 'val')
-        print(transmitted_words[0])
+        decoded_words = self.decoder(received_words, 'val', self.snr_range['val'][snr_ind], self.gamma_range[gamma_ind])
         ber, fer, err_indices = calculate_error_rates(decoded_words, transmitted_words)
         current_err_count = err_indices.shape[0]
 
