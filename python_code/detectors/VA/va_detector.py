@@ -64,7 +64,9 @@ class VADetector(nn.Module):
         """
         # channel_estimate
         h = estimate_channel(self.memory_length, snr, gamma, noisy_est_var=self.noisy_est_var)[:, 1:]
+        # forward pass
         self.run(y, h)
+        # trace-back
         estimated_word = self.traceback(phase)
         return estimated_word
 

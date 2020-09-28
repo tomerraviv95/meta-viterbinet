@@ -12,6 +12,15 @@ channel_type: 'ISI_AWGN' #'ISI_AWGN','Poisson'
 use_ecc: False
 noisy_est_var: 0.1 # 0, 0.1 for ISI_AWGN, 0.08 for Poisson
 
+# validation hyperparameters
+val_minibatch_size: 10000 # the more the merrier
+val_SNR_start: 8
+val_SNR_end: 8
+gamma_start: 0.1
+gamma_end: 2
+gamma_num: 20
+thresh_errors: 200 # monte-carlo error threshold per point
+
 # train hyperparameters
 num_of_minibatches: 100
 train_minibatch_size: 100 # should be big enough
@@ -21,15 +30,6 @@ train_num_SNR: 3 # how many equally spaced values, including edges
 lr: 0.001 # learning rate
 load_from_checkpoint: False # loads last checkpoint, if exists in the run_name folder
 
-# validation hyperparameters
-val_minibatch_size: 10000 # the more the merrier
-val_SNR_start: 7
-val_SNR_end: 10
-gamma_start: 0.1
-gamma_end: 2
-gamma_num: 10
-thresh_errors: 200 # monte-carlo error threshold per point
-
 # seed
-noise_seed: 345002
-word_seed: 786002
+noise_seed: 345004
+word_seed: 786004
