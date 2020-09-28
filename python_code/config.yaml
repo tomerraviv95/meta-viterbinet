@@ -19,7 +19,7 @@ val_SNR_end: 8
 gamma_start: 0.1
 gamma_end: 2
 gamma_num: 20
-thresh_errors: 200 # monte-carlo error threshold per point
+thresh_errors: 1000 # monte-carlo error threshold per point
 
 # train hyperparameters
 num_of_minibatches: 100

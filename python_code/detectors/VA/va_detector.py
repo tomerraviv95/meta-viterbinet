@@ -37,6 +37,7 @@ class VADetector(nn.Module):
                  n_states: int,
                  memory_length: int,
                  transmission_length: int,
+                 channel_type: str,
                  noisy_est_var: float):
 
         super(VADetector, self).__init__()
@@ -44,6 +45,7 @@ class VADetector(nn.Module):
         self.memory_length = memory_length
         self.transmission_length = transmission_length
         self.n_states = n_states
+        self.channel_type = channel_type
         self.noisy_est_var = noisy_est_var
         self.transition_table_array = create_transition_table(n_states)
         self.transition_table = torch.Tensor(self.transition_table_array).to(device)
@@ -83,26 +85,32 @@ class VADetector(nn.Module):
         previous_states = torch.zeros(
             [self.batch_size, self.n_states, self.transmission_length + self.memory_length]).to(device)
         out_prob_mat = torch.zeros(
-            [self.batch_size, self.n_states, self.transmission_length + self.memory_length]).to(
-            device)
+            [self.batch_size, self.n_states, self.transmission_length + self.memory_length]).to(device)
         in_prob = self.initial_in_prob.clone()
-
-        previous_symbols_per_state = np.zeros([self.batch_size, self.memory_length - 1, self.n_states])
+        previous_symbols_per_state = torch.zeros([self.batch_size, self.memory_length - 1, self.n_states]).to(device)
+        h_tensor = torch.Tensor(h).to(device)
 
         for i in range(self.transmission_length + self.memory_length):
-            out_prob, inds = self.basic_layer(in_prob, y[:, i], previous_symbols_per_state, h)
+            out_prob, inds = self.basic_layer(in_prob, y[:, i], previous_symbols_per_state, h_tensor)
             # update the previous state (each index corresponds to the state out of the total n_states)
             previous_states[:, :, i] = self.transition_table[
                 torch.arange(self.n_states).repeat(self.batch_size, 1), inds]
             out_prob_mat[:, :, i] = out_prob
             # update in-probabilities for next layer, clipping above and below thresholds
             in_prob = out_prob
-
-            previous_symbols_per_state[:, 2] = previous_symbols_per_state[:, 1]
-            previous_symbols_per_state[:, 1] = previous_symbols_per_state[:, 0]
-            previous_symbols_per_state[:, 0] = BPSKModulator.modulate(inds.cpu().numpy())
+            previous_symbols_per_state = self.update_previous_symbols_per_state(inds, previous_symbols_per_state)
 
         self.previous_states = previous_states
+
+    def update_previous_symbols_per_state(self, inds: torch.Tensor,
+                                          previous_symbols_per_state: torch.Tensor) -> torch.Tensor:
+        for j in range(self.memory_length - 2, 0, -1):
+            previous_symbols_per_state[:, j] = previous_symbols_per_state[:, j - 1]
+        if self.channel_type == 'ISI_AWGN':
+            previous_symbols_per_state[:, 0] = BPSKModulator.modulate(inds)
+        else:
+            raise Exception("No such channel exists!!!")
+        return previous_symbols_per_state
 
     def traceback(self, phase: str) -> torch.Tensor:
         """
