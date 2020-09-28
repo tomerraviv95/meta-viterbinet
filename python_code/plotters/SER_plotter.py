@@ -25,9 +25,17 @@ mpl.rcParams['mathtext.fontset'] = 'stix'
 mpl.rcParams['font.family'] = 'STIXGeneral'
 
 MARKERS_DICT = {'Viterbi, CSI uncertainty': 'x',
-                'Viterbi, perfect CSI': '^'}
+                'Viterbi, perfect CSI': '^',
+                'Viterbi, CSI uncertainty (paper)': 'x',
+                'Viterbi, perfect CSI (paper)': '^'}
 COLORS_DICT = {'Viterbi, CSI uncertainty': 'black',
-               'Viterbi, perfect CSI': 'blue'}  # google green
+               'Viterbi, perfect CSI': 'blue',
+               'Viterbi, CSI uncertainty (paper)': 'black',
+               'Viterbi, perfect CSI (paper)': 'blue'}  # google green
+LINESTYLES_DICT = {'Viterbi, CSI uncertainty': 'solid',
+                   'Viterbi, perfect CSI': 'solid',
+                   'Viterbi, CSI uncertainty (paper)': 'dotted',
+                   'Viterbi, perfect CSI (paper)': 'dotted'}
 
 
 def get_ber_plot(dec: Trainer, run_over: bool):
@@ -61,7 +69,7 @@ def plot_all_curves(all_curves: List[Tuple[np.ndarray, np.ndarray, str]]):
     max_snr = -math.inf
     for snr_range, ber, method_name in all_curves:
         plt.plot(snr_range, ber, label=method_name, marker=MARKERS_DICT[method_name], color=COLORS_DICT[method_name],
-                 linewidth=2.2, markersize=12)
+                 linestyle=LINESTYLES_DICT[method_name], linewidth=2.2, markersize=12)
         min_snr = snr_range[0] if snr_range[0] < min_snr else min_snr
         max_snr = snr_range[-1] if snr_range[-1] > max_snr else max_snr
 
@@ -80,16 +88,26 @@ if __name__ == '__main__':
     run_over = False
     all_curves = []
 
-    # perfect CSI
-    dec1 = VATrainer(val_SNR_start=-6, val_SNR_end=10, noisy_est_var=0, gamma_start=0.1, gamma_end=2,
-                     gamma_num=20, channel_type='ISI_AWGN')
-    ber1 = get_ber_plot(dec1, run_over=run_over)
-    all_curves.append((dec1.snr_range['val'], ber1, dec1.get_name()))
+    # from ViterbiNet paper
+    snr_range = np.arange(-6, 11, 2)
+    ber_awgn_isi_from_paper = [0.31, 0.28, 0.25, 0.22, 0.18, 0.15, 0.12, 1e-1, 8.5e-2]
+    all_curves.append((snr_range, ber_awgn_isi_from_paper, 'Viterbi, CSI uncertainty (paper)'))
 
     # noisy estimate of CSI
     dec2 = VATrainer(val_SNR_start=-6, val_SNR_end=10, noisy_est_var=0.1, gamma_start=0.1, gamma_end=2,
                      gamma_num=20, channel_type='ISI_AWGN')
     ber2 = get_ber_plot(dec2, run_over=run_over)
     all_curves.append((dec2.snr_range['val'], ber2, dec2.get_name()))
+
+    # perfect CSI
+    dec1 = VATrainer(val_SNR_start=-6, val_SNR_end=10, noisy_est_var=0, gamma_start=0.1, gamma_end=2,
+                     gamma_num=20, channel_type='ISI_AWGN')
+    ber1 = get_ber_plot(dec1, run_over=run_over)
+    all_curves.append((dec1.snr_range['val'], ber1, dec1.get_name()))
+
+    # from ViterbiNet paper
+    snr_range = np.arange(-6, 11, 2)
+    ber_awgn_perfect_from_paper = [0.31, 0.26, 0.21, 0.17, 0.11, 0.058, 0.022, 5e-3, 5e-4]
+    all_curves.append((snr_range, ber_awgn_perfect_from_paper, 'Viterbi, perfect CSI (paper)'))
 
     plot_all_curves(all_curves)

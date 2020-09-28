@@ -4,7 +4,7 @@ import yaml
 import torch
 import os
 from torch.optim import RMSprop
-from torch.nn import CrossEntropyLoss
+from torch.nn import CrossEntropyLoss, BCELoss
 from time import time
 from typing import Tuple
 from dir_definitions import CONFIG_PATH, WEIGHTS_DIR
@@ -33,14 +33,6 @@ class Trainer(object):
         self.use_ecc = None
         self.noisy_est_var = None
 
-        # training hyperparameters
-        self.num_of_minibatches = None
-        self.train_minibatch_size = None
-        self.train_SNR_start = None
-        self.train_SNR_end = None
-        self.lr = None  # learning rate
-        self.load_from_checkpoint = None  # loads last checkpoint, if exists in the run_name folder
-
         # validation hyperparameters
         self.val_minibatch_size = None  # the more the merrier :)
         self.val_SNR_start = None
@@ -49,6 +41,15 @@ class Trainer(object):
         self.gamma_end = None
         self.gamma_num = None
         self.thresh_errors = None  # monte-carlo error threshold per point
+
+        # training hyperparameters
+        self.num_of_minibatches = None
+        self.train_minibatch_size = None
+        self.train_SNR_start = None
+        self.train_SNR_end = None
+        self.lr = None  # learning rate
+        self.load_from_checkpoint = None  # loads last checkpoint, if exists in the run_name folder
+        self.loss_type = None
 
         # seed
         self.noise_seed = None
@@ -123,7 +124,12 @@ class Trainer(object):
         Sets up the optimizer and loss criterion
         """
         self.optimizer = RMSprop(filter(lambda p: p.requires_grad, self.decoder.parameters()), lr=self.lr)
-        self.criterion = CrossEntropyLoss().to(device=device)
+        if self.loss_type == 'BCE':
+            self.criterion = BCELoss().to(device)
+        elif self.loss_type == 'CrossEntropy':
+            self.criterion = CrossEntropyLoss().to(device=device)
+        else:
+            raise NotImplementedError("No such loss function implemented!!!")
 
     def initialize_dataloaders(self):
         """
