@@ -8,6 +8,7 @@ from numpy.random import mtrand
 from torch.utils.data import Dataset
 from typing import Tuple, List
 from python_code.channel.channel import ISIAWGNChannel, PoissonChannel
+from python_code.channel.channel_estimation import estimate_channel
 from python_code.channel.modulator import BPSKModulator, OnOffModulator
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -55,19 +56,18 @@ class ChannelModelDataset(Dataset):
             b = self.word_rand_gen.randint(0, 2, size=(self.batch_size, self.transmission_length))
             # encoding - errors correction code
             c = self.encoding(b)
-
+            # channel_estimate
+            h = estimate_channel(self.memory_length, snr, gamma)
             if self.channel_type == 'ISI_AWGN':
                 # modulation
                 s = BPSKModulator.modulate(c)
                 # transmit through noisy channel
-                y = ISIAWGNChannel.transmit(s=s, SNR=snr, random=self.random, gamma=gamma,
-                                            memory_length=self.memory_length)
+                y = ISIAWGNChannel.transmit(s=s, random=self.random, h=h, memory_length=self.memory_length)
             elif self.channel_type == 'Poisson':
                 # modulation
                 s = OnOffModulator.modulate(c)
                 # transmit through noisy channel
-                y = PoissonChannel.transmit(s=s, SNR=snr, random=self.random, gamma=gamma,
-                                            memory_length=self.memory_length)
+                y = PoissonChannel.transmit(s=s, random=self.random, h=h, memory_length=self.memory_length)
             else:
                 raise Exception('No such channel defined!!!')
 

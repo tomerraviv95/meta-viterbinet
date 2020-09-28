@@ -19,8 +19,10 @@ mpl.rcParams['legend.fontsize'] = 16
 mpl.rcParams['mathtext.fontset'] = 'stix'
 mpl.rcParams['font.family'] = 'STIXGeneral'
 
-MARKERS_DICT = {'VA': 'o'}
-COLORS_DICT = {'VA': '#0F9D58'}  # google green
+MARKERS_DICT = {'Viterbi, CSI uncertainty': 'x',
+                'Viterbi, perfect CSI': '^'}
+COLORS_DICT = {'Viterbi, CSI uncertainty': 'black',
+               'Viterbi, perfect CSI': 'blue'}  # google green
 
 dec = VATrainer()
 ber_total, fer_total = dec.evaluate()
@@ -31,8 +33,8 @@ current_day_time = datetime.datetime.now()
 folder_name = f'{current_day_time.month}-{current_day_time.day}-{current_day_time.hour}-{current_day_time.minute}_{dec.block_length}'
 if not os.path.isdir(os.path.join(FIGURES_DIR, folder_name)):
     os.makedirs(os.path.join(FIGURES_DIR, folder_name))
-plt.figure()
 
+plt.figure()
 plt.plot(snr_range, ber_total, label=method_name, marker=MARKERS_DICT[method_name], color=COLORS_DICT[method_name],
          linewidth=2.2, markersize=12)
 plt.yscale('log')

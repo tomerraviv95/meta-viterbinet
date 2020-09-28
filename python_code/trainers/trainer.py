@@ -26,9 +26,12 @@ class Trainer(object):
         self.block_length = None
         self.channel_blocks = None
         self.code_length = None
-        self.use_ecc = None
+
+        # channel
         self.memory_length = None
         self.channel_type = None
+        self.use_ecc = None
+        self.noisy_est_var = None
 
         # training hyperparameters
         self.num_of_minibatches = None

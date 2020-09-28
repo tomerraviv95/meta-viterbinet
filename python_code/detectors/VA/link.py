@@ -10,11 +10,12 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class Link(nn.Module):
     def __init__(self, n_states: int,
+                 memory_length: int,
                  transition_table_array: np.ndarray):
         self.n_states = n_states
         self.transition_table_array = transition_table_array
         self.transition_table = torch.Tensor(transition_table_array)
-        self.memory_length = 4
+        self.memory_length = memory_length
         super().__init__()
 
         # create matrices
@@ -47,24 +48,23 @@ class Link(nn.Module):
         max_values, absolute_max_ind = torch.max(reshaped_x, 2)
         return max_values, absolute_max_ind
 
-    def forward(self, in_prob: torch.Tensor, llrs: torch.Tensor, prev_mat, snr, gamma) -> [torch.Tensor,
-                                                                                           torch.LongTensor]:
+    def forward(self, in_prob: torch.Tensor, llrs: torch.Tensor, prev_mat: np.ndarray, h: np.ndarray) -> [torch.Tensor,
+                                                                                                          torch.LongTensor]:
         """
         Viterbi ACS block
         :param in_prob: last stage probabilities, [batch_size,n_states]
         :param llrs: edge probabilities, [batch_size,1]
         :return: current stage probabilities, [batch_size,n_states]
         """
-        A = torch.mm(in_prob, self.states_to_edges)
-        B = torch.mm(llrs.reshape(-1, 1), torch.ones([1, 32]).to(device))
+        # calculate path metrics and branch metrics, per edge
+        pm_mat = torch.mm(in_prob, self.states_to_edges)
+        bm_mat = torch.mm(llrs.reshape(-1, 1), torch.ones([1, 2 * self.n_states]).to(device))
 
-        # ISI
-        SNR_value = 10 ** (snr / 10)
-        h_tilde = np.reshape(np.exp(-gamma * np.arange(self.memory_length))[1:], [1, self.memory_length - 1])
-        isi = np.sum(prev_mat * np.expand_dims(h_tilde, 2), axis=1)
-        isi_tensor = torch.Tensor(math.sqrt(SNR_value) * isi).to(device)
-        C = torch.mm(isi_tensor, self.states_to_edges)
-        B -= C
+        # normalize by ISI per edge
+        isi_per_state = torch.Tensor(np.sum(prev_mat * np.expand_dims(h, 2), axis=1)).to(device)
+        isi_mat = torch.mm(isi_per_state, self.states_to_edges)
+        bm_tilde = (bm_mat - isi_mat) * self.llrs_to_edges
 
-        B2 = B * self.llrs_to_edges
-        return self.compare_select(A + B2)
+        # return ACS output
+        link_output = self.compare_select(pm_mat + bm_tilde)
+        return link_output

@@ -1,7 +1,4 @@
-import math
-
-from scipy import signal
-
+from python_code.channel.channel_estimation import estimate_channel
 from python_code.channel.modulator import BPSKModulator
 from python_code.detectors.VA.link import Link
 import itertools
@@ -38,13 +35,16 @@ class VADetector(nn.Module):
 
     def __init__(self,
                  n_states: int,
-                 transmission_length: int):
+                 memory_length: int,
+                 transmission_length: int,
+                 noisy_est_var: float):
 
         super(VADetector, self).__init__()
         self.start_state = 0
-        self.memory_length = 4
+        self.memory_length = memory_length
         self.transmission_length = transmission_length
         self.n_states = n_states
+        self.noisy_est_var = noisy_est_var
         self.transition_table_array = create_transition_table(n_states)
         self.transition_table = torch.Tensor(self.transition_table_array).to(device)
         # initialize all stages of the cva detectors
@@ -52,20 +52,23 @@ class VADetector(nn.Module):
 
     def init_layers(self):
         self.basic_layer = Link(n_states=self.n_states,
+                                memory_length=self.memory_length,
                                 transition_table_array=self.transition_table_array).to(device)
 
-    def forward(self, y: torch.Tensor, phase: str,snr,gamma) -> torch.Tensor:
+    def forward(self, y: torch.Tensor, phase: str, snr: float, gamma: float) -> torch.Tensor:
         """
         The circular Viterbi algorithm
         :param y: input llrs (batch)
         :param phase: 'val' or 'train'
         :return: batch of decoded binary words
         """
-        self.run(y,snr,gamma)
+        # channel_estimate
+        h = estimate_channel(self.memory_length, snr, gamma, noisy_est_var=self.noisy_est_var)[:, 1:]
+        self.run(y, h)
         estimated_word = self.traceback(phase)
         return estimated_word
 
-    def run(self, y: torch.Tensor,snr,gamma):
+    def run(self, y: torch.Tensor, h: np.ndarray):
         """
         The forward pass of the Viterbi algorithm
         :param y: input values (batch)
@@ -85,7 +88,7 @@ class VADetector(nn.Module):
         previous_symbols_per_state = np.zeros([self.batch_size, self.memory_length - 1, self.n_states])
 
         for i in range(self.transmission_length + self.memory_length):
-            out_prob, inds = self.basic_layer(in_prob, y[:, i], previous_symbols_per_state,snr,gamma)
+            out_prob, inds = self.basic_layer(in_prob, y[:, i], previous_symbols_per_state, h)
             # update the previous state (each index corresponds to the state out of the total n_states)
             previous_states[:, :, i] = self.transition_table[
                 torch.arange(self.n_states).repeat(self.batch_size, 1), inds]
