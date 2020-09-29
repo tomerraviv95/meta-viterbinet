@@ -2,6 +2,8 @@ from python_code.detectors.VNET.vnet_detector import VNETDetector
 from python_code.trainers.trainer import Trainer
 import torch
 
+from python_code.utils.trellis_utils import calculate_starting_state_for_tbcc
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
@@ -34,8 +36,10 @@ class VNETTrainer(Trainer):
         if self.load_from_checkpoint:
             self.load_last_checkpoint()
 
-    def calc_loss(self, soft_estimation: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
-        loss = self.criterion(input=soft_estimation, target=labels)
+    def calc_loss(self, soft_estimation: torch.Tensor, transmitted_words: torch.Tensor) -> torch.Tensor:
+        labels = calculate_starting_state_for_tbcc(self.n_states, transmitted_words)
+        loss = self.criterion(input=soft_estimation[:, :-self.memory_length].reshape(-1, self.n_states),
+                              target=labels.reshape(-1))
         return loss
 
 

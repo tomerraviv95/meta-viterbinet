@@ -1,6 +1,4 @@
-from python_code.channel.channel_estimation import estimate_channel
-from python_code.channel.modulator import BPSKModulator
-from python_code.detectors.VA.link import Link
+from python_code.detectors.VNET.learnable_link import LearnableLink
 import itertools
 import numpy as np
 import torch
@@ -53,26 +51,24 @@ class VNETDetector(nn.Module):
         self.init_layers()
 
     def init_layers(self):
-        self.basic_layer = Link(n_states=self.n_states,
-                                memory_length=self.memory_length,
-                                transition_table_array=self.transition_table_array).to(device)
+        self.learnable_layer = LearnableLink(n_states=self.n_states,
+                                             memory_length=self.memory_length,
+                                             transition_table_array=self.transition_table_array).to(device)
 
-    def forward(self, y: torch.Tensor, phase: str, snr: float, gamma: float) -> torch.Tensor:
+    def forward(self, y: torch.Tensor, phase: str, *args) -> torch.Tensor:
         """
         The circular Viterbi algorithm
         :param y: input llrs (batch)
         :param phase: 'val' or 'train'
         :return: batch of decoded binary words
         """
-        # channel_estimate
-        h = estimate_channel(self.memory_length, snr, gamma, noisy_est_var=self.noisy_est_var)[:, 1:]
         # forward pass
-        self.run(y, h)
+        self.run(y)
         # trace-back
         estimated_word = self.traceback(phase)
         return estimated_word
 
-    def run(self, y: torch.Tensor, h: np.ndarray):
+    def run(self, y: torch.Tensor):
         """
         The forward pass of the Viterbi algorithm
         :param y: input values (batch)
@@ -87,36 +83,27 @@ class VNETDetector(nn.Module):
         out_prob_mat = torch.zeros(
             [self.batch_size, self.n_states, self.transmission_length + self.memory_length]).to(device)
         in_prob = self.initial_in_prob.clone()
-        previous_symbols_per_state = torch.zeros([self.batch_size, self.memory_length - 1, self.n_states]).to(device)
-        h_tensor = torch.Tensor(h).to(device)
+        marginal_costs_mat = torch.zeros(
+            (self.batch_size, self.transmission_length + self.memory_length, self.n_states)).to(device)
 
         for i in range(self.transmission_length + self.memory_length):
-            out_prob, inds = self.basic_layer(in_prob, y[:, i], previous_symbols_per_state, h_tensor)
+            out_prob, inds = self.learnable_layer(in_prob, y[:, i], marginal_costs_mat, i)
             # update the previous state (each index corresponds to the state out of the total n_states)
             previous_states[:, :, i] = self.transition_table[
                 torch.arange(self.n_states).repeat(self.batch_size, 1), inds]
             out_prob_mat[:, :, i] = out_prob
             # update in-probabilities for next layer, clipping above and below thresholds
             in_prob = out_prob
-            previous_symbols_per_state = self.update_previous_symbols_per_state(inds, previous_symbols_per_state)
 
         self.previous_states = previous_states
-
-    def update_previous_symbols_per_state(self, inds: torch.Tensor,
-                                          previous_symbols_per_state: torch.Tensor) -> torch.Tensor:
-        for j in range(self.memory_length - 2, 0, -1):
-            previous_symbols_per_state[:, j] = previous_symbols_per_state[:, j - 1]
-        if self.channel_type == 'ISI_AWGN':
-            previous_symbols_per_state[:, 0] = BPSKModulator.modulate(inds)
-        else:
-            raise Exception("No such channel exists!!!")
-        return previous_symbols_per_state
+        self.marginal_costs_mat = marginal_costs_mat
 
     def traceback(self, phase: str) -> torch.Tensor:
         """
         Trace-back of the VA
         :return: binary decoded codewords
         """
+
         if phase == 'val':
             # trace back unit
             most_likely_state = self.start_state
@@ -128,4 +115,4 @@ class VNETDetector(nn.Module):
                 ml_path_bits[:, i] = (most_likely_state >= self.n_states // 2)
             return ml_path_bits[:, :-self.memory_length]
         else:
-            raise NotImplementedError("No implemented training for this decoder!!!")
+            return self.marginal_costs_mat

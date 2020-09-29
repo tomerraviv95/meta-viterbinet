@@ -112,7 +112,7 @@ class Trainer(object):
         pass
 
     # calculate train loss
-    def calc_loss(self, soft_estimation: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
+    def calc_loss(self, soft_estimation: torch.Tensor, transmitted_words: torch.Tensor) -> torch.Tensor:
         """
          Every trainer must have some loss calculation
         """
@@ -199,7 +199,7 @@ class Trainer(object):
 
     def single_snr_eval(self, snr_ind: int) -> Tuple[float, float]:
         ber_snr, fer_snr = 0, 0
-        for gamma_ind, gamma in enumerate(self.gamma_range):
+        for gamma_ind in range(len(self.gamma_range)):
             runs_num, err_count = 0, 0
             ber_gamma, fer_gamma = 0, 0
             # either stop when simulated enough errors, or reached a maximum number of runs
@@ -254,7 +254,6 @@ class Trainer(object):
         # batches loop
         for minibatch in range(self.start_minibatch, self.num_of_minibatches + 1):
             print(f"Minibatch number - {str(minibatch)}")
-
             current_loss = 0
 
             # run single train loop
@@ -270,7 +269,10 @@ class Trainer(object):
 
     def run_single_train_loop(self) -> float:
         # draw words
-        transmitted_words, received_words = iter(self.channel_dataset['train'][:len(self.snr_range['train'])])
+        snr_slice = slice(0, len(self.snr_range['train']))
+        gamma_slice = slice(0, len(self.gamma_range))
+        transmitted_words, received_words = self.channel_dataset['train'].__getitem__(snr_ind=snr_slice,
+                                                                                      gamma_ind=gamma_slice)
         transmitted_words = transmitted_words.to(device=device)
         received_words = received_words.to(device=device)
 
@@ -278,7 +280,7 @@ class Trainer(object):
         soft_estimation = self.decoder(received_words, 'train')
 
         # calculate loss
-        loss = self.calc_loss(soft_estimation=soft_estimation, labels=transmitted_words)
+        loss = self.calc_loss(soft_estimation=soft_estimation, transmitted_words=transmitted_words)
         loss_val = loss.item()
 
         # if loss is Nan inform the user

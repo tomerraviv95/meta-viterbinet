@@ -2,7 +2,7 @@
 run_name: 'test'
 
 # coding parameters
-block_length: 40
+block_length: 50
 channel_blocks: 1
 code_length: 255
 use_ecc: False
@@ -10,26 +10,27 @@ use_ecc: False
 # channel
 memory_length: 4
 channel_type: 'ISI_AWGN' #'ISI_AWGN','Poisson'
-noisy_est_var: 0.1 # 0, 0.1 for ISI_AWGN, 0.08 for Poisson
+noisy_est_var: 0 # 0, 0.1 for ISI_AWGN, 0.08 for Poisson
+
+# gamma values
+gamma_start: 0.1
+gamma_end: 2
+gamma_num: 10
 
 # validation hyperparameters
 val_minibatch_size: 20000 # the more the merrier
-val_SNR_start: 10
-val_SNR_end: 10
-gamma_start: 0.1
-gamma_end: 2
-gamma_num: 100
-thresh_errors: 200000 # monte-carlo error threshold per point
+val_SNR_start: 8
+val_SNR_end: 8
+thresh_errors: 10000 # monte-carlo error threshold per point
 
 # train hyperparameters
-num_of_minibatches: 100
+num_of_minibatches: 1000
 train_minibatch_size: 100 # should be big enough
-train_SNR_start: -2
-train_SNR_end: 0
-train_num_SNR: 3 # how many equally spaced values, including edges
+train_SNR_start: 0
+train_SNR_end: 4
 lr: 0.001 # learning rate
 load_from_checkpoint: False # loads last checkpoint, if exists in the run_name folder
-loss_type: 'BCE' # 'BCE','CrossEntropy'
+loss_type: 'CrossEntropy' # 'BCE','CrossEntropy'
 
 # seed
 noise_seed: 345000
