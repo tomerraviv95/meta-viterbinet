@@ -3,6 +3,7 @@ import torch.nn as nn
 import numpy as np
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+HIDDEN1_SIZE, HIDDEN2_SIZE = 100, 50
 
 
 class LearnableLink(nn.Module):
@@ -18,14 +19,12 @@ class LearnableLink(nn.Module):
         # create matrices
         self.create_states_to_edges_matrix()
         self.create_llrs_to_edges_matrix()
-
         self.initialize_dnn()
 
     def initialize_dnn(self):
-        hidden1, hidden2 = 100, 50
-        self.fc1 = nn.Linear(1, hidden1)  # 6*6 from image dimension
-        self.fc2 = nn.Linear(hidden1, hidden2)
-        self.fc3 = nn.Linear(hidden2, self.n_states)
+        self.fc1 = nn.Linear(1, HIDDEN1_SIZE)  # 6*6 from image dimension
+        self.fc2 = nn.Linear(HIDDEN1_SIZE, HIDDEN2_SIZE)
+        self.fc3 = nn.Linear(HIDDEN2_SIZE, self.n_states)
         self.sigmoid = nn.Sigmoid()
         self.relu = nn.ReLU()
         self.softmax = nn.Softmax(dim=1)
@@ -62,10 +61,10 @@ class LearnableLink(nn.Module):
         out2 = self.fc2(act_out1)
         act_out2 = self.relu(out2)
         out3 = self.fc3(act_out2)
-        return out3  # self.softmax(out3)
+        return out3
 
-    def forward(self, in_prob: torch.Tensor, llrs: torch.Tensor, marginal_costs_mat, i) -> [torch.Tensor,
-                                                                                            torch.LongTensor]:
+    def forward(self, in_prob: torch.Tensor, llrs: torch.Tensor, marginal_costs_mat: torch.Tensor, i: int) -> [
+        torch.Tensor, torch.LongTensor]:
         """
         Viterbi ACS block
         :param in_prob: last stage probabilities, [batch_size,n_states]

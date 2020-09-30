@@ -10,12 +10,12 @@ def calculate_states(n_states: int, transmitted_words: torch.Tensor):
     :param u_det: size [batch_size,info_length+crc_length]
     :return: vector of length batch_size with values in the range of 0,1,...,n_states-1
     """
-    all_states = torch.zeros([transmitted_words.size(0), transmitted_words.size(1)]).long().to(device)
-    for i in range(transmitted_words.size(1)-1):
+    all_states = torch.zeros([transmitted_words.size(0), transmitted_words.size(1)+1]).long().to(device)
+    for i in range(transmitted_words.size(1)):
         all_states[:, i + 1] = map_bit_and_state_to_next_state(n_states,
                                                                transmitted_words[:, i],
                                                                all_states[:, i])
-    return all_states
+    return all_states[:, 1:]
 
 
 def map_bit_and_state_to_next_state(n_states: int, bit: torch.Tensor, state: torch.Tensor):

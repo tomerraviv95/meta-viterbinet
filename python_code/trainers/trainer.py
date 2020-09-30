@@ -1,8 +1,10 @@
+import math
+
 from python_code.channel.channel_dataset import ChannelModelDataset
 from python_code.utils.metrics import calculate_error_rates
 from dir_definitions import CONFIG_PATH, WEIGHTS_DIR
 from torch.nn import CrossEntropyLoss, BCELoss, MSELoss
-from torch.optim import RMSprop
+from torch.optim import RMSprop, Adam, lr_scheduler, SGD
 from shutil import copyfile
 import yaml
 import torch
@@ -50,6 +52,8 @@ class Trainer(object):
         self.lr = None  # learning rate
         self.loss_type = None
         self.print_every_n_train_minibatches = None
+        self.optimizer_type = None
+        self.scheduler_mode = None
 
         # seed
         self.noise_seed = None
@@ -122,8 +126,20 @@ class Trainer(object):
         """
         Sets up the optimizer and loss criterion
         """
-        self.optimizer = RMSprop(filter(lambda p: p.requires_grad, self.detector.parameters()),
+        if self.optimizer_type == 'Adam':
+            self.optimizer = Adam(filter(lambda p: p.requires_grad, self.detector.parameters()),
+                                  lr=self.lr)
+        elif self.optimizer_type == 'RMSprop':
+            self.optimizer = RMSprop(filter(lambda p: p.requires_grad, self.detector.parameters()),
+                                     lr=self.lr)
+        elif self.optimizer_type == 'SGD':
+            self.optimizer = SGD(filter(lambda p: p.requires_grad, self.detector.parameters()),
                                  lr=self.lr)
+        else:
+            raise NotImplementedError("No such optimizer implemented!!!")
+        if self.scheduler_mode == 'on':
+            self.scheduler = lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='min', factor=0.5, threshold=1e-5,
+                                                            patience=1, verbose=False)
         if self.loss_type == 'BCE':
             self.criterion = BCELoss().to(device)
         elif self.loss_type == 'CrossEntropy':
@@ -217,7 +233,7 @@ class Trainer(object):
                 # initialize weights and loss
                 self.initialize_detector()
                 self.deep_learning_setup()
-                current_loss = 0
+                best_ser = math.inf
 
                 for minibatch in range(1, self.train_minibatch_num + 1):
                     # run single train loop
@@ -228,15 +244,16 @@ class Trainer(object):
                     loss.backward()
                     self.optimizer.step()
                     if minibatch % self.print_every_n_train_minibatches == 0:
+                        # evaluate performance
                         ser = self.single_eval(snr, gamma)
                         print(f'Minibatch {minibatch}, Loss {current_loss}, ser - {ser}')
+                        self.scheduler.step(metrics=ser)
+                        # save best weights
+                        if ser < best_ser:
+                            self.save_weights(current_loss, snr, gamma)
+                            best_ser = ser
 
-                # save weights
-                self.save_weights(current_loss, snr, gamma)
-
-                # evaluate performance
-                ser = self.single_eval(snr, gamma)
-                print(f'ser - {ser}')
+                print(f'best ser - {best_ser}')
                 print('*' * 50)
 
     def single_train_loop(self, snr: int, gamma: int) -> torch.Tensor:

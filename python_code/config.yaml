@@ -1,5 +1,5 @@
 # general
-run_name: 'tes4t'
+run_name: 'original_vnet'
 
 # coding parameters
 block_length: 10
@@ -24,13 +24,15 @@ val_SNR_start: 8
 val_SNR_end: 8
 
 # train hyperparameters
-train_minibatch_num: 1000
-train_minibatch_size: 200 # should be big enough
+train_minibatch_num: 200
+train_minibatch_size: 16
 train_SNR_start: 8
 train_SNR_end: 8
 lr: 0.001 # learning rate
 loss_type: 'CrossEntropy' # 'BCE','CrossEntropy','MSE'
-print_every_n_train_minibatches: 100
+print_every_n_train_minibatches: 10
+optimizer_type: 'Adam' # 'Adam','RMSprop','SGD'
+scheduler_mode: 'on' # 'on', 'off'
 
 # seed
 noise_seed: 345000
