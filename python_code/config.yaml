@@ -25,12 +25,12 @@ val_SNR_end: 8
 
 # train hyperparameters
 train_minibatch_num: 1000
-train_minibatch_size: 1000 # should be big enough
+train_minibatch_size: 200 # should be big enough
 train_SNR_start: 8
 train_SNR_end: 8
 lr: 0.001 # learning rate
 loss_type: 'CrossEntropy' # 'BCE','CrossEntropy','MSE'
-print_every_n_train_minibatches: 50
+print_every_n_train_minibatches: 100
 
 # seed
 noise_seed: 345000

@@ -2,7 +2,7 @@ from python_code.channel.channel_dataset import ChannelModelDataset
 from python_code.utils.metrics import calculate_error_rates
 from dir_definitions import CONFIG_PATH, WEIGHTS_DIR
 from torch.nn import CrossEntropyLoss, BCELoss, MSELoss
-from torch.optim import RMSprop, Adam
+from torch.optim import RMSprop
 from shutil import copyfile
 import yaml
 import torch
@@ -217,11 +217,8 @@ class Trainer(object):
                 # initialize weights and loss
                 self.initialize_detector()
                 self.deep_learning_setup()
-
                 current_loss = 0
-                ser = self.single_eval(snr, gamma)
 
-                print(f'ser - {ser}')
                 for minibatch in range(1, self.train_minibatch_num + 1):
                     # run single train loop
                     loss = self.single_train_loop(snr, gamma)
@@ -231,9 +228,8 @@ class Trainer(object):
                     loss.backward()
                     self.optimizer.step()
                     if minibatch % self.print_every_n_train_minibatches == 0:
-                        print(f"Loss {current_loss}")
                         ser = self.single_eval(snr, gamma)
-                        print(f'ser - {ser}')
+                        print(f'Minibatch {minibatch}, Loss {current_loss}, ser - {ser}')
 
                 # save weights
                 self.save_weights(current_loss, snr, gamma)
