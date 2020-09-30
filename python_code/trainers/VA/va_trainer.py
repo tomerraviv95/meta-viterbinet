@@ -21,15 +21,15 @@ class VATrainer(Trainer):
 
         return 'Viterbi' + channel_state
 
-    def load_detector(self):
+    def initialize_detector(self):
         """
-        Loads the VA decoder
+        Loads the VA detector
         """
-        self.decoder = VADetector(n_states=self.n_states,
-                                  memory_length=self.memory_length,
-                                  transmission_length=self.transmission_length,
-                                  channel_type=self.channel_type,
-                                  noisy_est_var=self.noisy_est_var)
+        self.detector = VADetector(n_states=self.n_states,
+                                   memory_length=self.memory_length,
+                                   transmission_length=self.transmission_length,
+                                   channel_type=self.channel_type,
+                                   noisy_est_var=self.noisy_est_var)
 
     def train(self):
         raise NotImplementedError("No training implemented for this decoder!!!")

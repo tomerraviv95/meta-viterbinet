@@ -1,8 +1,10 @@
+import os
+
 from python_code.detectors.VNET.vnet_detector import VNETDetector
 from python_code.trainers.trainer import Trainer
 import torch
 
-from python_code.utils.trellis_utils import calculate_starting_state_for_tbcc
+from python_code.utils.trellis_utils import calculate_states
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -23,21 +25,32 @@ class VNETTrainer(Trainer):
 
         return 'VNET' + channel_state
 
-    def load_detector(self):
+    def initialize_detector(self):
         """
-        Loads the VNET decoder
+        Loads the VNET detector
         """
-        self.decoder = VNETDetector(n_states=self.n_states,
-                                    memory_length=self.memory_length,
-                                    transmission_length=self.transmission_length,
-                                    channel_type=self.channel_type,
-                                    noisy_est_var=self.noisy_est_var)
+        self.detector = VNETDetector(n_states=self.n_states,
+                                     memory_length=self.memory_length,
+                                     transmission_length=self.transmission_length,
+                                     channel_type=self.channel_type,
+                                     noisy_est_var=self.noisy_est_var)
 
-        if self.load_from_checkpoint:
-            self.load_last_checkpoint()
+    def load_weights(self, snr, gamma):
+        """
+        Loads detector's weights from highest checkpoint in run_name
+        """
+        if os.path.join(self.weights_dir, f'snr_{snr}_gamma_{gamma}.pt'):
+            print(f'loading model from snr {snr} and gamma {gamma}')
+            checkpoint = torch.load(os.path.join(self.weights_dir, f'snr_{snr}_gamma_{gamma}.pt'))
+            try:
+                self.detector.load_state_dict(checkpoint['model_state_dict'])
+            except Exception:
+                raise ValueError("Wrong run directory!!!")
+        else:
+            print(f'No checkpoint for snr {snr} and gamma {gamma} in run "{self.run_name}", starting from scratch')
 
     def calc_loss(self, soft_estimation: torch.Tensor, transmitted_words: torch.Tensor) -> torch.Tensor:
-        labels = calculate_starting_state_for_tbcc(self.n_states, transmitted_words)
+        labels = calculate_states(self.n_states, transmitted_words)
         loss = self.criterion(input=soft_estimation[:, :-self.memory_length].reshape(-1, self.n_states),
                               target=labels.reshape(-1))
         return loss

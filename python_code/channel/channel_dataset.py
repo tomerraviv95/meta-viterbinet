@@ -23,8 +23,6 @@ class ChannelModelDataset(Dataset):
     def __init__(self, channel_type: str,
                  transmission_length: int,
                  batch_size: int,
-                 snr_range: np.ndarray,
-                 gamma_range: np.ndarray,
                  memory_length: int,
                  random: mtrand.RandomState,
                  word_rand_gen: mtrand.RandomState,
@@ -35,8 +33,6 @@ class ChannelModelDataset(Dataset):
         self.random = random if random else np.random.RandomState()
         self.channel_type = channel_type
         self.batch_size = batch_size
-        self.snr_range = snr_range
-        self.gamma_range = gamma_range
         self.memory_length = memory_length
         if use_ecc:
             self.encoding = lambda b: (np.dot(b, code_gm) % 2)
@@ -78,22 +74,13 @@ class ChannelModelDataset(Dataset):
 
         database.append((b_full[:self.batch_size], c_full[:self.batch_size], y_full[:self.batch_size]))
 
-    def __getitem__(self, snr_ind: int, gamma_ind: int) -> Tuple[torch.Tensor, torch.Tensor]:
-        if not isinstance(self.snr_range, collections.Iterable):
-            self.snr_range = [self.snr_range]
-        if not isinstance(self.gamma_range, collections.Iterable):
-            self.gamma_range = [self.gamma_range]
-        if not isinstance(snr_ind, slice):
-            snr_ind = [snr_ind]
-        if not isinstance(gamma_ind, slice):
-            gamma_ind = [gamma_ind]
+    def __getitem__(self, snr: float, gamma: float) -> Tuple[torch.Tensor, torch.Tensor]:
         database = []
         with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-            {executor.submit(self.get_snr_data, snr, gamma, database) for snr, gamma in
-             itertools.product(self.snr_range[snr_ind], self.gamma_range[gamma_ind])}
+            executor.submit(self.get_snr_data, snr, gamma, database)
         b, c, y = (np.concatenate(arrays) for arrays in zip(*database))
         b, y = torch.Tensor(b).to(device=device), torch.Tensor(y).to(device=device)
         return b, y
 
     def __len__(self):
-        return self.batch_size * len(self.snr_range) * len(self.gamma_range)
+        return self.batch_size

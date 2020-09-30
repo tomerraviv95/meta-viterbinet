@@ -28,7 +28,7 @@ class LearnableLink(nn.Module):
         self.fc3 = nn.Linear(hidden2, self.n_states)
         self.sigmoid = nn.Sigmoid()
         self.relu = nn.ReLU()
-        self.softmax = nn.Softmax()
+        self.softmax = nn.Softmax(dim=1)
 
     def create_states_to_edges_matrix(self):
         self.states_to_edges = torch.cat([self.transition_table.reshape(1, -1) == i for i in range(self.n_states)],
@@ -62,7 +62,7 @@ class LearnableLink(nn.Module):
         out2 = self.fc2(act_out1)
         act_out2 = self.relu(out2)
         out3 = self.fc3(act_out2)
-        return out3 # self.softmax(out3)
+        return out3  # self.softmax(out3)
 
     def forward(self, in_prob: torch.Tensor, llrs: torch.Tensor, marginal_costs_mat, i) -> [torch.Tensor,
                                                                                             torch.LongTensor]:

@@ -3,7 +3,7 @@ import torch
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def calculate_starting_state_for_tbcc(n_states: int, transmitted_words: torch.Tensor):
+def calculate_states(n_states: int, transmitted_words: torch.Tensor):
     """
     calculates the starting state for the give words (u_det is information + crc word)
     take last bits, and pass through code's trellis

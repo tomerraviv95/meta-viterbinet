@@ -1,15 +1,14 @@
 from python_code.channel.channel_dataset import ChannelModelDataset
 from python_code.utils.metrics import calculate_error_rates
+from dir_definitions import CONFIG_PATH, WEIGHTS_DIR
+from torch.nn import CrossEntropyLoss, BCELoss
+from torch.optim import RMSprop
+from shutil import copyfile
 import yaml
 import torch
 import os
-from torch.optim import RMSprop
-from torch.nn import CrossEntropyLoss, BCELoss
 from time import time
-from typing import Tuple
-from dir_definitions import CONFIG_PATH, WEIGHTS_DIR
 import numpy as np
-from shutil import copyfile
 
 MAX_RUNS = 10 ** 5
 
@@ -34,6 +33,7 @@ class Trainer(object):
         self.noisy_est_var = None
 
         # validation hyperparameters
+        self.val_minibatch_num = None  # the more the merrier :)
         self.val_minibatch_size = None  # the more the merrier :)
         self.val_SNR_start = None
         self.val_SNR_end = None
@@ -43,12 +43,11 @@ class Trainer(object):
         self.thresh_errors = None  # monte-carlo error threshold per point
 
         # training hyperparameters
-        self.num_of_minibatches = None
+        self.train_minibatch_num = None
         self.train_minibatch_size = None
         self.train_SNR_start = None
         self.train_SNR_end = None
         self.lr = None  # learning rate
-        self.load_from_checkpoint = None  # loads last checkpoint, if exists in the run_name folder
         self.loss_type = None
 
         # seed
@@ -67,9 +66,8 @@ class Trainer(object):
         self.n_states = 2 ** self.memory_length
         self.transmission_length = self.block_length * self.channel_blocks
 
-        # initialize matrices, datasets and decoder
-        self.start_minibatch = 0
-        self.load_detector()
+        # initialize matrices, datasets and detector
+        self.initialize_detector()
         self.initialize_dataloaders()
 
     def initialize_by_kwargs(self, **kwargs):
@@ -104,11 +102,11 @@ class Trainer(object):
     def get_name(self):
         return self.__name__()
 
-    def load_detector(self):
+    def initialize_detector(self):
         """
-        Every trainer must have some base decoder model
+        Every trainer must have some base detector model
         """
-        self.decoder = None
+        self.detector = None
         pass
 
     # calculate train loss
@@ -123,7 +121,7 @@ class Trainer(object):
         """
         Sets up the optimizer and loss criterion
         """
-        self.optimizer = RMSprop(filter(lambda p: p.requires_grad, self.decoder.parameters()), lr=self.lr)
+        self.optimizer = RMSprop(filter(lambda p: p.requires_grad, self.detector.parameters()), lr=self.lr)
         if self.loss_type == 'BCE':
             self.criterion = BCELoss().to(device)
         elif self.loss_type == 'CrossEntropy':
@@ -143,8 +141,6 @@ class Trainer(object):
             phase: ChannelModelDataset(channel_type=self.channel_type,
                                        transmission_length=self.transmission_length,
                                        batch_size=self.batches_size[phase],
-                                       snr_range=self.snr_range[phase],
-                                       gamma_range=self.gamma_range,
                                        memory_length=self.memory_length,
                                        random=self.rand_gen,
                                        word_rand_gen=self.word_rand_gen,
@@ -153,94 +149,55 @@ class Trainer(object):
         self.dataloaders = {phase: torch.utils.data.DataLoader(self.channel_dataset[phase])
                             for phase in ['train', 'val']}
 
-    def load_last_checkpoint(self):
+    def load_weights(self, *args):
         """
-        Loads decoder's weights from highest checkpoint in run_name
+        Loads detector's weights from highest checkpoint in run_name
         """
-        print(self.run_name)
-        folder = os.path.join(os.path.join(WEIGHTS_DIR, self.run_name))
-        names = []
-        for file in os.listdir(folder):
-            if file.startswith("checkpoint_"):
-                names.append(int(file.split('.')[0].split('_')[1]))
-        names.sort()
-        if len(names) == 0:
-            print("No checkpoints in run dir!!!")
-            return
+        pass
 
-        self.start_minibatch = int(names[-1])
-        if os.path.isfile(os.path.join(WEIGHTS_DIR, self.run_name, f'checkpoint_{self.start_minibatch}.pt')):
-            print(f'loading model from minibatch {self.start_minibatch}')
-            checkpoint = torch.load(os.path.join(WEIGHTS_DIR, self.run_name, f'checkpoint_{self.start_minibatch}.pt'))
-            try:
-                self.decoder.load_state_dict(checkpoint['model_state_dict'])
-            except Exception:
-                raise ValueError("Wrong run directory!!!")
-        else:
-            print(f'There is no checkpoint {self.start_minibatch} in run "{self.run_name}", starting from scratch')
-
-    def evaluate(self) -> Tuple[np.ndarray, np.ndarray]:
+    def evaluate(self) -> np.ndarray:
         """
         Monte-Carlo simulation over validation SNRs range
         :return: ber, fer, iterations vectors
         """
-        ber_total, fer_total = np.zeros(len(self.snr_range['val'])), np.zeros(len(self.snr_range['val']))
+        ser_total = np.zeros(len(self.snr_range['val']))
         with torch.no_grad():
             for snr_ind, snr in enumerate(self.snr_range['val']):
                 print(f'Starts evaluation at snr {snr}')
                 start = time()
+                ser_snr = 0
+                for gamma in self.gamma_range:
+                    self.load_weights(snr, gamma)
+                    ser_snr += self.single_eval(snr, gamma)
 
-                ber_snr, fer_snr = self.single_snr_eval(snr_ind)
-                ber_total[snr_ind] = ber_snr
-                fer_total[snr_ind] = fer_snr
-                print(f'Done. time: {time() - start}, ber: {ber_total[snr_ind]}, fer: {fer_total[snr_ind]}')
+                # divide by the number of different gamma values
+                ser_snr /= self.gamma_num
 
-        return ber_total, fer_total
+                ser_total[snr_ind] = ser_snr
+                print(f'Done. time: {time() - start}, ser: {ser_snr}')
 
-    def single_snr_eval(self, snr_ind: int) -> Tuple[float, float]:
-        ber_snr, fer_snr = 0, 0
-        for gamma_ind in range(len(self.gamma_range)):
-            runs_num, err_count = 0, 0
-            ber_gamma, fer_gamma = 0, 0
-            # either stop when simulated enough errors, or reached a maximum number of runs
-            while err_count < self.thresh_errors and runs_num < MAX_RUNS:
-                ber, fer, current_err_count = self.single_eval(snr_ind, gamma_ind)
-                ber_gamma += ber
-                fer_gamma += fer
-                err_count += current_err_count
-                runs_num += 1.0
+        return ser_total
 
-            # get ber and fer per gamma accurately by dividing the number of required runs
-            ber_gamma /= runs_num
-            fer_gamma /= runs_num
-
-            # at last sum all gamma runs together
-            ber_snr += ber_gamma
-            fer_snr += fer_gamma
-
-        # divide by the number of different gamma values
-        ber_snr /= self.gamma_num
-        fer_snr /= self.gamma_num
-        return ber_snr, fer_snr
-
-    def single_eval(self, snr_ind: int, gamma_ind: int) -> Tuple[float, float, int]:
+    def single_eval(self, snr: float, gamma: float) -> float:
         """
         Evaluation at a single snr.
-        :param snr_ind: indice of snr in the snrs vector
-        :return: ber and fer for batch, average iterations per word and number of errors in current batch
+        :param snr: indice of snr in the snrs vector
+        :return: ser for batch
         """
-        # create state_estimator_morning data
-        transmitted_words, received_words = self.channel_dataset['val'].__getitem__(snr_ind=snr_ind,
-                                                                                    gamma_ind=gamma_ind)
-        transmitted_words = transmitted_words.to(device=device)
-        received_words = received_words.to(device=device)
+        ser = 0
+        for minibatch in range(self.val_minibatch_num):
+            # create state_estimator_morning data
+            transmitted_words, received_words = self.channel_dataset['val'].__getitem__(snr=snr, gamma=gamma)
+            transmitted_words = transmitted_words.to(device=device)
+            received_words = received_words.to(device=device)
 
-        # decode and calculate accuracy
-        decoded_words = self.decoder(received_words, 'val', self.snr_range['val'][snr_ind], self.gamma_range[gamma_ind])
-        ber, fer, err_indices = calculate_error_rates(decoded_words, transmitted_words)
-        current_err_count = err_indices.shape[0]
+            # decode and calculate accuracy
+            decoded_words = self.detector(received_words, 'val', snr, gamma)
+            current_ser, fer, err_indices = calculate_error_rates(decoded_words, transmitted_words)
+            ser += current_ser
 
-        return ber, fer, current_err_count
+        ser /= self.val_minibatch_num
+        return ser
 
     def train(self):
         """
@@ -249,35 +206,38 @@ class Trainer(object):
         Saves weights every so and so iterations.
         """
         self.deep_learning_setup()
-        self.evaluate()
 
         # batches loop
-        for minibatch in range(self.start_minibatch, self.num_of_minibatches + 1):
-            print(f"Minibatch number - {str(minibatch)}")
-            current_loss = 0
+        for snr in self.snr_range['train']:
+            for gamma in self.gamma_range:
+                print(f'SNR - {snr}, Gamma - {gamma}')
 
-            # run single train loop
-            current_loss += self.run_single_train_loop()
+                # initialize weights and loss
+                self.initialize_detector()
+                current_loss = 0
 
-            print(f"Loss {current_loss}")
+                for minibatch in range(self.train_minibatch_num):
+                    # run single train loop
+                    current_loss += self.single_train_loop(snr, gamma)
 
-            # save weights
-            self.save_checkpoint(current_loss, minibatch)
+                print(f"Loss {current_loss}")
 
-            # evaluate performance
-            self.evaluate()
+                # save weights
+                self.save_weights(current_loss, snr, gamma)
 
-    def run_single_train_loop(self) -> float:
+                # evaluate performance
+                ser = self.single_eval(snr, gamma)
+                print(f'ser - {ser}')
+                print('*' * 50)
+
+    def single_train_loop(self, snr: int, gamma: int) -> float:
         # draw words
-        snr_slice = slice(0, len(self.snr_range['train']))
-        gamma_slice = slice(0, len(self.gamma_range))
-        transmitted_words, received_words = self.channel_dataset['train'].__getitem__(snr_ind=snr_slice,
-                                                                                      gamma_ind=gamma_slice)
+        transmitted_words, received_words = self.channel_dataset['train'].__getitem__(snr=snr, gamma=gamma)
         transmitted_words = transmitted_words.to(device=device)
         received_words = received_words.to(device=device)
 
-        # pass through decoder
-        soft_estimation = self.decoder(received_words, 'train')
+        # pass through detector
+        soft_estimation = self.detector(received_words, 'train')
 
         # calculate loss
         loss = self.calc_loss(soft_estimation=soft_estimation, transmitted_words=transmitted_words)
@@ -294,10 +254,8 @@ class Trainer(object):
 
         return loss_val
 
-    def save_checkpoint(self, current_loss: float, minibatch: int):
-        torch.save({'minibatch': minibatch,
-                    'model_state_dict': self.decoder.state_dict(),
+    def save_weights(self, current_loss: float, snr: int, gamma: int):
+        torch.save({'model_state_dict': self.detector.state_dict(),
                     'optimizer_state_dict': self.optimizer.state_dict(),
-                    'loss': current_loss,
-                    'lr': self.lr},
-                   os.path.join(self.weights_dir, 'checkpoint_' + str(minibatch) + '.pt'))
+                    'loss': current_loss},
+                   os.path.join(self.weights_dir, f'snr_{snr}_gamma_{gamma}.pt'))
