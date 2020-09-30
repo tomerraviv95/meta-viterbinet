@@ -76,7 +76,7 @@ class LearnableLink(nn.Module):
         pm_mat = torch.mm(in_prob, self.states_to_edges)
         marginal_costs = self.dnn(llrs)
         marginal_costs_mat[:, i, :] = marginal_costs
-        bm_mat = torch.mm(self.softmax(marginal_costs), self.states_to_edges)
+        bm_mat = torch.mm(marginal_costs, self.states_to_edges)
 
         # return ACS output
         link_output = self.compare_select(pm_mat + bm_mat)
