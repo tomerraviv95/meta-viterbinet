@@ -22,15 +22,14 @@ val_minibatch_num: 5 # the more the merrier
 val_minibatch_size: 20000 # the more the merrier
 val_SNR_start: 8
 val_SNR_end: 8
-thresh_errors: 10000 # monte-carlo error threshold per point
 
 # train hyperparameters
 train_minibatch_num: 20
-train_minibatch_size: 100 # should be big enough
+train_minibatch_size: 1000 # should be big enough
 train_SNR_start: 8
 train_SNR_end: 8
-lr: 0.001 # learning rate
-loss_type: 'CrossEntropy' # 'BCE','CrossEntropy'
+lr: 0.1 # learning rate
+loss_type: 'CrossEntropy' # 'BCE','CrossEntropy','MSE'
 
 # seed
 noise_seed: 345000

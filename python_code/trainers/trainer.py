@@ -1,8 +1,8 @@
 from python_code.channel.channel_dataset import ChannelModelDataset
 from python_code.utils.metrics import calculate_error_rates
 from dir_definitions import CONFIG_PATH, WEIGHTS_DIR
-from torch.nn import CrossEntropyLoss, BCELoss
-from torch.optim import RMSprop
+from torch.nn import CrossEntropyLoss, BCELoss, MSELoss
+from torch.optim import RMSprop,Adam
 from shutil import copyfile
 import yaml
 import torch
@@ -125,7 +125,9 @@ class Trainer(object):
         if self.loss_type == 'BCE':
             self.criterion = BCELoss().to(device)
         elif self.loss_type == 'CrossEntropy':
-            self.criterion = CrossEntropyLoss().to(device=device)
+            self.criterion = CrossEntropyLoss().to(device)
+        elif self.loss_type == 'MSE':
+            self.criterion = MSELoss().to(device)
         else:
             raise NotImplementedError("No such loss function implemented!!!")
 
@@ -215,11 +217,11 @@ class Trainer(object):
                 # initialize weights and loss
                 self.initialize_detector()
                 current_loss = 0
-
+                ser = self.single_eval(snr, gamma)
+                print(f'ser - {ser}')
                 for minibatch in range(self.train_minibatch_num):
                     # run single train loop
-                    current_loss += self.single_train_loop(snr, gamma)
-
+                    current_loss = self.single_train_loop(snr, gamma)
                 print(f"Loss {current_loss}")
 
                 # save weights
@@ -240,6 +242,7 @@ class Trainer(object):
         soft_estimation = self.detector(received_words, 'train')
 
         # calculate loss
+        # print(self.detector.learnable_layer.fc3.weight.grad)
         loss = self.calc_loss(soft_estimation=soft_estimation, transmitted_words=transmitted_words)
         loss_val = loss.item()
 
