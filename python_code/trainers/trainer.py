@@ -2,7 +2,7 @@ from python_code.channel.channel_dataset import ChannelModelDataset
 from python_code.utils.metrics import calculate_error_rates
 from dir_definitions import CONFIG_PATH, WEIGHTS_DIR
 from torch.nn import CrossEntropyLoss, BCELoss, MSELoss
-from torch.optim import RMSprop,Adam
+from torch.optim import RMSprop, Adam
 from shutil import copyfile
 import yaml
 import torch
@@ -49,6 +49,7 @@ class Trainer(object):
         self.train_SNR_end = None
         self.lr = None  # learning rate
         self.loss_type = None
+        self.print_every_n_train_minibatches = None
 
         # seed
         self.noise_seed = None
@@ -121,7 +122,8 @@ class Trainer(object):
         """
         Sets up the optimizer and loss criterion
         """
-        self.optimizer = RMSprop(filter(lambda p: p.requires_grad, self.detector.parameters()), lr=self.lr)
+        self.optimizer = RMSprop(filter(lambda p: p.requires_grad, self.detector.parameters()),
+                                 lr=self.lr)
         if self.loss_type == 'BCE':
             self.criterion = BCELoss().to(device)
         elif self.loss_type == 'CrossEntropy':
@@ -207,8 +209,6 @@ class Trainer(object):
         Evaluates performance over validation SNRs.
         Saves weights every so and so iterations.
         """
-        self.deep_learning_setup()
-
         # batches loop
         for snr in self.snr_range['train']:
             for gamma in self.gamma_range:
@@ -216,13 +216,24 @@ class Trainer(object):
 
                 # initialize weights and loss
                 self.initialize_detector()
+                self.deep_learning_setup()
+
                 current_loss = 0
                 ser = self.single_eval(snr, gamma)
+
                 print(f'ser - {ser}')
-                for minibatch in range(self.train_minibatch_num):
+                for minibatch in range(1, self.train_minibatch_num + 1):
                     # run single train loop
-                    current_loss = self.single_train_loop(snr, gamma)
-                print(f"Loss {current_loss}")
+                    loss = self.single_train_loop(snr, gamma)
+                    current_loss = loss.item()
+                    # back propagation
+                    self.optimizer.zero_grad()
+                    loss.backward()
+                    self.optimizer.step()
+                    if minibatch % self.print_every_n_train_minibatches == 0:
+                        print(f"Loss {current_loss}")
+                        ser = self.single_eval(snr, gamma)
+                        print(f'ser - {ser}')
 
                 # save weights
                 self.save_weights(current_loss, snr, gamma)
@@ -232,7 +243,7 @@ class Trainer(object):
                 print(f'ser - {ser}')
                 print('*' * 50)
 
-    def single_train_loop(self, snr: int, gamma: int) -> float:
+    def single_train_loop(self, snr: int, gamma: int) -> torch.Tensor:
         # draw words
         transmitted_words, received_words = self.channel_dataset['train'].__getitem__(snr=snr, gamma=gamma)
         transmitted_words = transmitted_words.to(device=device)
@@ -240,22 +251,13 @@ class Trainer(object):
 
         # pass through detector
         soft_estimation = self.detector(received_words, 'train')
-
         # calculate loss
-        # print(self.detector.learnable_layer.fc3.weight.grad)
         loss = self.calc_loss(soft_estimation=soft_estimation, transmitted_words=transmitted_words)
-        loss_val = loss.item()
 
         # if loss is Nan inform the user
         if torch.sum(torch.isnan(loss)):
             print('Nan value')
-
-        # backpropagation
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
-
-        return loss_val
+        return loss
 
     def save_weights(self, current_loss: float, snr: int, gamma: int):
         torch.save({'model_state_dict': self.detector.state_dict(),

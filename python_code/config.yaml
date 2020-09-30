@@ -1,5 +1,5 @@
 # general
-run_name: 'test'
+run_name: 'tes4t'
 
 # coding parameters
 block_length: 10
@@ -24,12 +24,13 @@ val_SNR_start: 8
 val_SNR_end: 8
 
 # train hyperparameters
-train_minibatch_num: 20
+train_minibatch_num: 1000
 train_minibatch_size: 1000 # should be big enough
 train_SNR_start: 8
 train_SNR_end: 8
-lr: 0.1 # learning rate
+lr: 0.001 # learning rate
 loss_type: 'CrossEntropy' # 'BCE','CrossEntropy','MSE'
+print_every_n_train_minibatches: 50
 
 # seed
 noise_seed: 345000
