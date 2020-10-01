@@ -23,7 +23,7 @@ class ChannelModelDataset(Dataset):
 
     def __init__(self, channel_type: str,
                  transmission_length: int,
-                 batch_size: int,
+                 channel_blocks: int,
                  memory_length: int,
                  random: mtrand.RandomState,
                  word_rand_gen: mtrand.RandomState,
@@ -33,7 +33,7 @@ class ChannelModelDataset(Dataset):
         self.word_rand_gen = word_rand_gen if word_rand_gen else np.random.RandomState()
         self.random = random if random else np.random.RandomState()
         self.channel_type = channel_type
-        self.batch_size = batch_size
+        self.channel_blocks = channel_blocks
         self.memory_length = memory_length
         if use_ecc:
             self.encoding = lambda b: (np.dot(b, code_gm) % 2)
@@ -84,4 +84,4 @@ class ChannelModelDataset(Dataset):
         return b, y
 
     def __len__(self):
-        return self.batch_size
+        return self.transmission_length * self.channel_blocks

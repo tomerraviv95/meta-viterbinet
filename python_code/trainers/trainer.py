@@ -158,11 +158,11 @@ class Trainer(object):
         self.snr_range = {'train': np.arange(self.train_SNR_start, self.train_SNR_end + 1),
                           'val': np.arange(self.val_SNR_start, self.val_SNR_end + 1)}
         self.gamma_range = np.linspace(self.gamma_start, self.gamma_end, self.gamma_num)
-        self.batches_size = {'train': self.train_minibatch_size, 'val': self.val_minibatch_size}
+        self.channel_blocks_per_phase = {'train': self.channel_blocks, 'val': self.channel_blocks}
         self.channel_dataset = {
             phase: ChannelModelDataset(channel_type=self.channel_type,
                                        transmission_length=self.transmission_length,
-                                       batch_size=self.batches_size[phase],
+                                       channel_blocks=self.channel_blocks_per_phase[phase],
                                        memory_length=self.memory_length,
                                        random=self.rand_gen,
                                        word_rand_gen=self.word_rand_gen,
