@@ -61,7 +61,10 @@ class Link(nn.Module):
         bm_mat = torch.mm(llrs.reshape(-1, 1), torch.ones([1, 2 * self.n_states]).to(device))
 
         # normalize by ISI per edge
-        isi_per_state = torch.sum(previous_symbols_per_state * torch.unsqueeze(h, 2), dim=1)
+        new_mat = torch.Tensor(1 - 2 * (
+        np.unpackbits(np.arange(self.n_states).astype(np.uint8).reshape(-1, 1), axis=1)[:,
+        -self.memory_length:]).astype(int))
+        isi_per_state = torch.mm(new_mat.to(device),h.T).T # torch.sum(previous_symbols_per_state * torch.unsqueeze(h, 2), dim=1)
         isi_mat = torch.mm(isi_per_state, self.states_to_edges)
         bm_tilde = (bm_mat - isi_mat) * self.llrs_to_edges
 

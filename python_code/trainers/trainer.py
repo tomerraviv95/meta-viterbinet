@@ -1,10 +1,11 @@
 import math
 
 from python_code.channel.channel_dataset import ChannelModelDataset
+from python_code.utils.early_stopping import EarlyStopping
 from python_code.utils.metrics import calculate_error_rates
 from dir_definitions import CONFIG_PATH, WEIGHTS_DIR
 from torch.nn import CrossEntropyLoss, BCELoss, MSELoss
-from torch.optim import RMSprop, Adam, lr_scheduler, SGD
+from torch.optim import RMSprop, Adam, SGD
 from shutil import copyfile
 import yaml
 import torch
@@ -53,7 +54,7 @@ class Trainer(object):
         self.loss_type = None
         self.print_every_n_train_minibatches = None
         self.optimizer_type = None
-        self.scheduler_mode = None
+        self.early_stopping_mode = None
 
         # seed
         self.noise_seed = None
@@ -137,9 +138,10 @@ class Trainer(object):
                                  lr=self.lr)
         else:
             raise NotImplementedError("No such optimizer implemented!!!")
-        if self.scheduler_mode == 'on':
-            self.scheduler = lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='min', factor=0.5, threshold=1e-5,
-                                                            patience=1, verbose=False)
+        if self.early_stopping_mode == 'on':
+            self.es = EarlyStopping(patience=50)
+        else:
+            self.es = None
         if self.loss_type == 'BCE':
             self.criterion = BCELoss().to(device)
         elif self.loss_type == 'CrossEntropy':
@@ -247,11 +249,12 @@ class Trainer(object):
                         # evaluate performance
                         ser = self.single_eval(snr, gamma)
                         print(f'Minibatch {minibatch}, Loss {current_loss}, ser - {ser}')
-                        self.scheduler.step(metrics=ser)
                         # save best weights
                         if ser < best_ser:
                             self.save_weights(current_loss, snr, gamma)
                             best_ser = ser
+                        if self.es.step(ser):
+                            break
 
                 print(f'best ser - {best_ser}')
                 print('*' * 50)

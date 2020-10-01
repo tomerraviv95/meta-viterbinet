@@ -51,7 +51,7 @@ class VNETTrainer(Trainer):
 
     def calc_loss(self, soft_estimation: torch.Tensor, transmitted_words: torch.Tensor) -> torch.Tensor:
         gt_states = calculate_states(self.n_states, transmitted_words)
-        input = soft_estimation[:, :-self.memory_length].reshape(-1, self.n_states)
+        input = soft_estimation.reshape(-1, self.n_states)
         target = gt_states.reshape(-1)
         loss = self.criterion(input=input, target=target)
         return loss
@@ -60,3 +60,4 @@ class VNETTrainer(Trainer):
 if __name__ == '__main__':
     dec = VNETTrainer()
     dec.train()
+    # dec.evaluate()

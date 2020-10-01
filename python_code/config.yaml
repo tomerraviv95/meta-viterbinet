@@ -1,8 +1,8 @@
 # general
-run_name: 'original_vnet'
+run_name: 'original_vnet123'
 
 # coding parameters
-block_length: 10
+block_length: 1000
 channel_blocks: 1
 code_length: 255
 use_ecc: False
@@ -19,20 +19,20 @@ gamma_num: 1
 
 # validation hyperparameters
 val_minibatch_num: 5 # the more the merrier
-val_minibatch_size: 20000 # the more the merrier
+val_minibatch_size: 1 # the more the merrier
 val_SNR_start: 8
-val_SNR_end: 8
+val_SNR_end: 10
 
 # train hyperparameters
-train_minibatch_num: 200
-train_minibatch_size: 16
-train_SNR_start: 8
-train_SNR_end: 8
+train_minibatch_num: 500
+train_minibatch_size: 1
+train_SNR_start: 10
+train_SNR_end: 10
 lr: 0.001 # learning rate
 loss_type: 'CrossEntropy' # 'BCE','CrossEntropy','MSE'
 print_every_n_train_minibatches: 10
 optimizer_type: 'Adam' # 'Adam','RMSprop','SGD'
-scheduler_mode: 'on' # 'on', 'off'
+early_stopping_mode: 'on' # 'on', 'off'
 
 # seed
 noise_seed: 345000

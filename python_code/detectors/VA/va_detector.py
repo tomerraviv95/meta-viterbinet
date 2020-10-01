@@ -65,7 +65,7 @@ class VADetector(nn.Module):
         :return: batch of decoded binary words
         """
         # channel_estimate
-        h = estimate_channel(self.memory_length, snr, gamma, noisy_est_var=self.noisy_est_var)[:, 1:]
+        h = estimate_channel(self.memory_length, snr, gamma, noisy_est_var=self.noisy_est_var)
         # forward pass
         self.run(y, h)
         # trace-back
@@ -83,14 +83,14 @@ class VADetector(nn.Module):
         self.initial_in_prob = torch.zeros((self.batch_size, self.n_states)).to(device)
 
         previous_states = torch.zeros(
-            [self.batch_size, self.n_states, self.transmission_length + self.memory_length]).to(device)
+            [self.batch_size, self.n_states, self.transmission_length]).to(device)
         out_prob_mat = torch.zeros(
-            [self.batch_size, self.n_states, self.transmission_length + self.memory_length]).to(device)
+            [self.batch_size, self.n_states, self.transmission_length]).to(device)
         in_prob = self.initial_in_prob.clone()
         previous_symbols_per_state = torch.zeros([self.batch_size, self.memory_length - 1, self.n_states]).to(device)
         h_tensor = torch.Tensor(h).to(device)
 
-        for i in range(self.transmission_length + self.memory_length):
+        for i in range(self.transmission_length):
             out_prob, inds = self.basic_layer(in_prob, y[:, i], previous_symbols_per_state, h_tensor)
             # update the previous state (each index corresponds to the state out of the total n_states)
             previous_states[:, :, i] = self.transition_table[
@@ -120,12 +120,12 @@ class VADetector(nn.Module):
         if phase == 'val':
             # trace back unit
             most_likely_state = self.start_state
-            ml_path_bits = torch.zeros([self.batch_size, self.transmission_length + self.memory_length]).to(device)
+            ml_path_bits = torch.zeros([self.batch_size, self.transmission_length]).to(device)
 
             # traceback - loop on all stages, from last to first, saving the most likely path
-            for i in range(self.transmission_length + self.memory_length - 1, -1, -1):
+            for i in range(self.transmission_length - 1, -1, -1):
                 most_likely_state = self.previous_states[torch.arange(self.batch_size), most_likely_state, i].long()
                 ml_path_bits[:, i] = (most_likely_state >= self.n_states // 2)
-            return ml_path_bits[:, :-self.memory_length]
+            return ml_path_bits
         else:
             raise NotImplementedError("No implemented training for this decoder!!!")
