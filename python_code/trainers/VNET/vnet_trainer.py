@@ -30,14 +30,11 @@ class VNETTrainer(Trainer):
         Loads the VNET detector
         """
         self.detector = VNETDetector(n_states=self.n_states,
-                                     memory_length=self.memory_length,
-                                     transmission_length=self.transmission_length,
-                                     channel_type=self.channel_type,
-                                     noisy_est_var=self.noisy_est_var)
+                                     transmission_length=self.transmission_length)
 
-    def load_weights(self, snr, gamma):
+    def load_weights(self, snr: float, gamma: float):
         """
-        Loads detector's weights from highest checkpoint in run_name
+        Loads detector's weights from checkpoint, if exists
         """
         if os.path.join(self.weights_dir, f'snr_{snr}_gamma_{gamma}.pt'):
             print(f'loading model from snr {snr} and gamma {gamma}')
@@ -49,16 +46,27 @@ class VNETTrainer(Trainer):
         else:
             print(f'No checkpoint for snr {snr} and gamma {gamma} in run "{self.run_name}", starting from scratch')
 
-    def calc_loss(self, soft_estimation: torch.Tensor, transmitted_words: torch.Tensor) -> torch.Tensor:
-        padded_b = torch.cat(
-            [transmitted_words, torch.zeros([transmitted_words.shape[0], self.memory_length]).to(device)], dim=1)
-        before = torch.cat([padded_b[:, i:-self.memory_length + i] for i in range(self.memory_length)], dim=0)
-        new_h = (2 ** torch.arange(self.memory_length)).float().reshape(1, -1).to(device)
-        gt_states = torch.mm(new_h, before).reshape(-1).long()
-        input = soft_estimation.T
-        rand_ind = torch.multinomial(torch.arange(transmitted_words.shape[1]).float(),
+    def select_batch(self, gt_states: torch.LongTensor, soft_estimation: torch.Tensor):
+        """
+        Select a batch from the input and output label
+        :param gt_states:
+        :param soft_estimation:
+        :return:
+        """
+        rand_ind = torch.multinomial(torch.arange(gt_states.shape[0]).float(),
                                      self.train_minibatch_size).long().to(device)
-        loss = self.criterion(input=input[rand_ind], target=gt_states[rand_ind])
+        return gt_states[rand_ind], soft_estimation[rand_ind]
+
+    def calc_loss(self, soft_estimation: torch.Tensor, transmitted_words: torch.IntTensor) -> torch.Tensor:
+        """
+        Cross Entropy loss - distribution over states versus the gt state label
+        :param soft_estimation: [transmission_length,n_states], each element is a probability
+        :param transmitted_words: [1, transmission_length]
+        :return: loss value
+        """
+        gt_states = calculate_states(self.memory_length, transmitted_words)
+        gt_states_batch, input_batch = self.select_batch(gt_states, soft_estimation)
+        loss = self.criterion(input=input_batch, target=gt_states_batch)
         return loss
 
 

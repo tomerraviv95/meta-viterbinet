@@ -2,14 +2,10 @@ from numpy.random import mtrand
 from scipy import signal
 import numpy as np
 import torch
-import math
-
-from python_code.utils.numpy_utils import shift_array
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 W_SIGMA = 1
-shift_array
 
 
 class ISIAWGNChannel:
@@ -18,22 +14,23 @@ class ISIAWGNChannel:
         """
         The AWGN Channel
         :param s: to transmit symbol words
-        :param SNR: signal-to-noise value
+        :param snr: signal-to-noise value
         :param random: random words generator
-        :param use_llr: whether llr values or magnitude
+        :param h: channel function
+        :param memory_length: length of channel memory
         :return: received word
         """
         snr_value = 10 ** (snr / 10)
 
-        before_conv = np.concatenate([s[:, i:-memory_length + i] for i in range(memory_length)], axis=0)
+        blockwise_s = np.concatenate([s[:, i:-memory_length + i] for i in range(memory_length)], axis=0)
 
-        conv_out = np.dot(h[:, ::-1], before_conv)
+        conv = np.dot(h[:, ::-1], blockwise_s)
 
-        [row, col] = conv_out.shape
+        [row, col] = conv.shape
 
         w = (snr_value ** (-0.5)) * random.normal(0, W_SIGMA, (row, col))
 
-        y = conv_out + w
+        y = conv + w
 
         return y
 

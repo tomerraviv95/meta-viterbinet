@@ -1,31 +1,40 @@
 import torch
+import numpy as np
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def calculate_states(n_states: int, transmitted_words: torch.Tensor):
+def create_transition_table(n_states: int) -> np.ndarray:
     """
-    calculates the starting state for the give words (u_det is information + crc word)
-    take last bits, and pass through code's trellis
-    :param u_det: size [batch_size,info_length+crc_length]
-    :return: vector of length batch_size with values in the range of 0,1,...,n_states-1
+    creates transition table of size [n_states,2]
+    previous state of state i and input bit b is the state in cell [i,b]
     """
-    all_states = torch.zeros([transmitted_words.size(0), transmitted_words.size(1)+1]).long().to(device)
-    for i in range(transmitted_words.size(1)):
-        all_states[:, i + 1] = map_bit_and_state_to_next_state(n_states,
-                                                               transmitted_words[:, i],
-                                                               all_states[:, i])
-    return all_states[:, 1:]
+    transition_table = np.concatenate([np.arange(n_states), np.arange(n_states)]).reshape(n_states, 2)
+    return transition_table
 
 
-def map_bit_and_state_to_next_state(n_states: int, bit: torch.Tensor, state: torch.Tensor):
+def acs_block(in_prob: torch.Tensor, llrs: torch.Tensor, transition_table, n_states) -> [torch.Tensor,
+                                                                                         torch.LongTensor]:
     """
-    Based on the current srs and bits arrays. For example:
-    and so on...
+    Viterbi ACS block
+    :param in_prob: last stage probabilities, [batch_size,n_states]
+    :param llrs: edge probabilities, [batch_size,1]
+    :return: current stage probabilities, [batch_size,n_states]
     """
-    next_state = torch.zeros_like(state)
-    zeros_ind = (bit == 0)
-    next_state[zeros_ind] = state[zeros_ind] // 2
-    ones_ind = (bit == 1)
-    next_state[ones_ind] = (state[ones_ind] // 2 + (n_states / 2)).long()
-    return next_state.long()
+    trellis = (in_prob + llrs)[transition_table.long()]
+    reshaped_trellis = trellis.reshape(-1, n_states, 2)
+    return torch.min(reshaped_trellis, 2)
+
+
+def calculate_states(memory_length: int, transmitted_words: torch.Tensor):
+    """
+    calculates the state for the transmitted words
+    :param memory_length: length of channel memory
+    :param transmitted_words: channel transmitted words
+    :return: vector of length of transmitted_words with values in the range of 0,1,...,n_states-1
+    """
+    padded = torch.cat([transmitted_words, torch.zeros([transmitted_words.shape[0], memory_length]).to(device)], dim=1)
+    blockwise_words = torch.cat([padded[:, i:-memory_length + i] for i in range(memory_length)], dim=0)
+    states_enumerator = (2 ** torch.arange(memory_length)).float().reshape(1, -1).to(device)
+    gt_states = torch.mm(states_enumerator, blockwise_words).reshape(-1).long()
+    return gt_states

@@ -214,7 +214,7 @@ class Trainer(object):
             received_words = received_words.to(device=device)
 
             # decode and calculate accuracy
-            decoded_words = self.detector(received_words, 'val', snr, gamma)
+            decoded_words = self.detector(received_words, 'val', gamma)
             current_ser, fer, err_indices = calculate_error_rates(decoded_words, transmitted_words)
             ser += current_ser
 
@@ -259,25 +259,24 @@ class Trainer(object):
                 print(f'best ser - {best_ser}')
                 print('*' * 50)
 
-    def single_train_loop(self, snr: int, gamma: int) -> torch.Tensor:
+    def single_train_loop(self, snr: float, gamma: float) -> torch.Tensor:
         # draw words
         transmitted_words, received_words = self.channel_dataset['train'].__getitem__(snr=snr, gamma=gamma)
         transmitted_words = transmitted_words.to(device=device)
         received_words = received_words.to(device=device)
 
         # pass through detector
-        soft_estimation = self.detector(received_words, 'train', snr, gamma)
+        soft_estimation = self.detector(received_words, 'train', gamma)
 
         # calculate loss
-        loss = self.calc_loss(soft_estimation=soft_estimation,
-                              transmitted_words=transmitted_words)
+        loss = self.calc_loss(soft_estimation=soft_estimation, transmitted_words=transmitted_words)
 
         # if loss is Nan inform the user
         if torch.sum(torch.isnan(loss)):
             print('Nan value')
         return loss
 
-    def save_weights(self, current_loss: float, snr: int, gamma: int):
+    def save_weights(self, current_loss: float, snr: float, gamma: float):
         torch.save({'model_state_dict': self.detector.state_dict(),
                     'optimizer_state_dict': self.optimizer.state_dict(),
                     'loss': current_loss},

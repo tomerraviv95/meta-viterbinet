@@ -1,95 +1,58 @@
-from python_code.channel.channel_estimation import estimate_channel
-from python_code.detectors.VNET.learnable_link import Link
-import itertools
-import numpy as np
-import torch
+from python_code.utils.trellis_utils import create_transition_table, acs_block
 import torch.nn as nn
+import torch
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-UINT8_CONSTANT = 8
-HIDDEN1_SIZE, HIDDEN2_SIZE = 100, 50
-
-
-def create_transition_table(n_states: int) -> np.ndarray:
-    """
-    creates transition table of size [n_states,2]
-    next state of state i and input bit b is the state in cell [i,b]
-    """
-    transition_table = np.concatenate([np.arange(n_states), np.arange(n_states)]).reshape(n_states, 2)
-    return transition_table
+HIDDEN1_SIZE = 100
+HIDDEN2_SIZE = 50
 
 
 class VNETDetector(nn.Module):
     """
-    This implements the VA decoder by unfolding into a neural network
+    This implements the VA decoder by an NN on each stage
     """
 
     def __init__(self,
                  n_states: int,
-                 memory_length: int,
-                 transmission_length: int,
-                 channel_type: str,
-                 noisy_est_var: float):
+                 transmission_length: int):
 
         super(VNETDetector, self).__init__()
         self.start_state = 0
-        self.memory_length = memory_length
         self.transmission_length = transmission_length
         self.n_states = n_states
-        self.channel_type = channel_type
-        self.noisy_est_var = noisy_est_var
         self.transition_table_array = create_transition_table(n_states)
         self.transition_table = torch.Tensor(self.transition_table_array).to(device)
-        # initialize all stages of the cva detectors
-        self.init_layers()
         self.initialize_dnn()
 
     def initialize_dnn(self):
-        layers = []
-        layers.append(nn.Linear(1, HIDDEN1_SIZE))
-        layers.append(nn.Sigmoid())
-        layers.append(nn.Linear(HIDDEN1_SIZE, HIDDEN2_SIZE))
-        layers.append(nn.ReLU())
-        layers.append(nn.Linear(HIDDEN2_SIZE, self.n_states))
+        layers = [nn.Linear(1, HIDDEN1_SIZE),
+                  nn.Sigmoid(),
+                  nn.Linear(HIDDEN1_SIZE, HIDDEN2_SIZE),
+                  nn.ReLU(),
+                  nn.Linear(HIDDEN2_SIZE, self.n_states)]
         self.net = nn.Sequential(*layers).to(device)
 
-    def init_layers(self):
-        self.basic_layer = Link(n_states=self.n_states,
-                                memory_length=self.memory_length,
-                                transition_table_array=self.transition_table_array).to(device)
-
-    def forward(self, y: torch.Tensor, phase: str, snr: float, gamma: float) -> torch.Tensor:
+    def forward(self, y: torch.Tensor, phase: str, *args) -> torch.Tensor:
         """
-        The circular Viterbi algorithm
-        :param y: input llrs (batch)
-        :param phase: 'val' or 'train'
-        :return: batch of decoded binary words
+        The forward pass of the ViterbiNet algorithm
+        :param y: input values
+        :param phase: 'train' or 'val'
         """
-        # channel_estimate
-        h = estimate_channel(self.memory_length, gamma, noisy_est_var=self.noisy_est_var)
-        # forward pass
-        estimated_word = self.run(y, h, phase)
-        return estimated_word
-
-    def run(self, y: torch.Tensor, h, phase):
-        """
-        The forward pass of the Viterbi algorithm
-        :param y: input values (batch)
-        """
+        # initialize input probabilities
         in_prob = torch.zeros(self.n_states).to(device)
-        h_tensor = torch.Tensor(h).to(device)
-
-        priors = self.net(y.reshape(-1, 1)).T
+        # compute priors
+        priors = self.net(y.reshape(-1, 1))
 
         if phase == 'val':
-            ml_path_bits = torch.zeros(y.shape).to(device)
-
+            decoded_word = torch.zeros(y.shape[1]).to(device)
             for i in range(self.transmission_length):
-                ml_path_bits[:, i] = torch.argmin(in_prob) % 2
-                out_prob, inds = self.basic_layer(in_prob, -priors[:, i], h_tensor)
-                # update in-probabilities for next layer, clipping above and below thresholds
-                in_prob = out_prob
+                # get the lsb of the state
+                decoded_word[i] = torch.argmin(in_prob) % 2
+                # run one Vitebi stage
+                out_prob, _ = acs_block(in_prob, -priors[i], self.transition_table, self.n_states)
+                # update in-probabilities for next layer
+                in_prob = out_prob.reshape(-1)
 
-            return ml_path_bits
+            return decoded_word
         else:
             return priors

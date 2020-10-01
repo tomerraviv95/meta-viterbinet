@@ -10,7 +10,6 @@ from typing import Tuple, List
 from python_code.channel.channel import ISIAWGNChannel, PoissonChannel
 from python_code.channel.channel_estimation import estimate_channel
 from python_code.channel.modulator import BPSKModulator, OnOffModulator
-from python_code.utils.numpy_utils import shift_array
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 MAX_WORKERS = 16
@@ -40,7 +39,7 @@ class ChannelModelDataset(Dataset):
         else:
             self.encoding = lambda b: b
 
-    def get_snr_data(self, snr: int, gamma: int, database: list):
+    def get_snr_data(self, snr: float, gamma: float, database: list):
         if database is None:
             database = []
         b_full = np.empty((0, self.transmission_length))
