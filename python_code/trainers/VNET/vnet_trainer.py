@@ -23,7 +23,7 @@ class VNETTrainer(Trainer):
         else:
             channel_state = ', perfect CSI'
 
-        return 'VNET' + channel_state
+        return 'ViterbiNet' + channel_state
 
     def initialize_detector(self):
         """

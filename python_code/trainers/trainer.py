@@ -40,15 +40,18 @@ class Trainer(object):
         self.gamma_num = None
 
         # validation hyperparameters
-        self.channel_blocks = None
+        self.val_channel_blocks = None
         self.val_SNR_start = None
         self.val_SNR_end = None
+        self.val_SNR_step = None
 
         # training hyperparameters
         self.train_minibatch_num = None
         self.train_minibatch_size = None
         self.train_SNR_start = None
         self.train_SNR_end = None
+        self.train_SNR_step = None
+        self.train_channel_blocks = None
         self.lr = None  # learning rate
         self.loss_type = None
         self.print_every_n_train_minibatches = None
@@ -138,7 +141,7 @@ class Trainer(object):
         else:
             raise NotImplementedError("No such optimizer implemented!!!")
         if self.early_stopping_mode == 'on':
-            self.es = EarlyStopping(patience=50)
+            self.es = EarlyStopping(patience=20)
         else:
             self.es = None
         if self.loss_type == 'BCE':
@@ -154,10 +157,10 @@ class Trainer(object):
         """
         Sets up the data loader - a generator from which we draw batches, in iterations
         """
-        self.snr_range = {'train': np.arange(self.train_SNR_start, self.train_SNR_end + 1),
-                          'val': np.arange(self.val_SNR_start, self.val_SNR_end + 1)}
+        self.snr_range = {'train': np.arange(self.train_SNR_start, self.train_SNR_end + 1, step=self.train_SNR_step),
+                          'val': np.arange(self.val_SNR_start, self.val_SNR_end + 1, step=self.val_SNR_step)}
         self.gamma_range = np.linspace(self.gamma_start, self.gamma_end, self.gamma_num)
-        self.channel_blocks_per_phase = {'train': 1, 'val': self.channel_blocks}
+        self.channel_blocks_per_phase = {'train': self.train_channel_blocks, 'val': self.val_channel_blocks}
         self.channel_dataset = {
             phase: ChannelModelDataset(channel_type=self.channel_type,
                                        transmission_length=self.transmission_length,
@@ -165,6 +168,7 @@ class Trainer(object):
                                        memory_length=self.memory_length,
                                        random=self.rand_gen,
                                        word_rand_gen=self.word_rand_gen,
+                                       noisy_est_var=self.noisy_est_var,
                                        use_ecc=self.use_ecc)
             for phase in ['train', 'val']}
         self.dataloaders = {phase: torch.utils.data.DataLoader(self.channel_dataset[phase])

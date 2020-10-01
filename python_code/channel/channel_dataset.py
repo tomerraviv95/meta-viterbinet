@@ -26,6 +26,7 @@ class ChannelModelDataset(Dataset):
                  memory_length: int,
                  random: mtrand.RandomState,
                  word_rand_gen: mtrand.RandomState,
+                 noisy_est_var: float,
                  use_ecc: bool):
 
         self.transmission_length = transmission_length
@@ -34,6 +35,7 @@ class ChannelModelDataset(Dataset):
         self.channel_type = channel_type
         self.channel_blocks = channel_blocks
         self.memory_length = memory_length
+        self.noisy_est_var = noisy_est_var
         if use_ecc:
             self.encoding = lambda b: (np.dot(b, code_gm) % 2)
         else:
@@ -54,7 +56,7 @@ class ChannelModelDataset(Dataset):
             # encoding - errors correction code
             c = self.encoding(padded_b)
             # channel_estimate
-            h = estimate_channel(self.memory_length, gamma)
+            h = estimate_channel(self.memory_length, gamma, noisy_est_var=self.noisy_est_var)
             if self.channel_type == 'ISI_AWGN':
                 # modulation
                 s = BPSKModulator.modulate(c)

@@ -38,7 +38,9 @@ def calculate_states(memory_length: int, transmitted_words: torch.Tensor):
     :return: vector of length of transmitted_words with values in the range of 0,1,...,n_states-1
     """
     padded = torch.cat([transmitted_words, torch.zeros([transmitted_words.shape[0], memory_length]).to(device)], dim=1)
-    blockwise_words = torch.cat([padded[:, i:-memory_length + i] for i in range(memory_length)], dim=0)
-    states_enumerator = (2 ** torch.arange(memory_length)).float().reshape(1, -1).to(device)
-    gt_states = torch.mm(states_enumerator, blockwise_words).reshape(-1).long()
+    unsqueezed_padded = padded.unsqueeze(dim=1)
+    blockwise_words = torch.cat([unsqueezed_padded[:, :, i:-memory_length + i] for i in range(memory_length)], dim=1)
+    states_enumerator = (2 ** torch.arange(memory_length)).reshape(1, -1).float().to(device)
+    gt_states = torch.sum(blockwise_words.transpose(1, 2).reshape(-1, memory_length) * states_enumerator,
+                          dim=1).long()
     return gt_states
