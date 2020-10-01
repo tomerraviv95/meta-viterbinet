@@ -266,9 +266,11 @@ class Trainer(object):
         received_words = received_words.to(device=device)
 
         # pass through detector
-        soft_estimation = self.detector(received_words, 'train')
+        soft_estimation = self.detector(received_words, 'train', snr, gamma)
+
         # calculate loss
-        loss = self.calc_loss(soft_estimation=soft_estimation, transmitted_words=transmitted_words)
+        loss = self.calc_loss(soft_estimation=soft_estimation,
+                              transmitted_words=transmitted_words)
 
         # if loss is Nan inform the user
         if torch.sum(torch.isnan(loss)):

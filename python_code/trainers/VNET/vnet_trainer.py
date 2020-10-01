@@ -50,10 +50,15 @@ class VNETTrainer(Trainer):
             print(f'No checkpoint for snr {snr} and gamma {gamma} in run "{self.run_name}", starting from scratch')
 
     def calc_loss(self, soft_estimation: torch.Tensor, transmitted_words: torch.Tensor) -> torch.Tensor:
-        gt_states = calculate_states(self.n_states, transmitted_words)
-        input = soft_estimation.reshape(-1, self.n_states)
-        target = gt_states.reshape(-1)
-        loss = self.criterion(input=input, target=target)
+        padded_b = torch.cat(
+            [transmitted_words, torch.zeros([transmitted_words.shape[0], self.memory_length]).to(device)], dim=1)
+        before = torch.cat([padded_b[:, i:-self.memory_length + i] for i in range(self.memory_length)], dim=0)
+        new_h = (2 ** torch.arange(self.memory_length)).float().reshape(1, -1).to(device)
+        gt_states = torch.mm(new_h, before).reshape(-1).long()
+        input = soft_estimation.T
+        rand_ind = torch.multinomial(torch.arange(transmitted_words.shape[1]).float(),
+                                     self.train_minibatch_size).long().to(device)
+        loss = self.criterion(input=input[rand_ind], target=gt_states[rand_ind])
         return loss
 
 
