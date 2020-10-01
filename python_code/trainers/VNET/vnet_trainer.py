@@ -60,12 +60,12 @@ class VNETTrainer(Trainer):
     def calc_loss(self, soft_estimation: torch.Tensor, transmitted_words: torch.IntTensor) -> torch.Tensor:
         """
         Cross Entropy loss - distribution over states versus the gt state label
-        :param soft_estimation: [transmission_length,n_states], each element is a probability
+        :param soft_estimation: [1,transmission_length,n_states], each element is a probability
         :param transmitted_words: [1, transmission_length]
         :return: loss value
         """
         gt_states = calculate_states(self.memory_length, transmitted_words)
-        gt_states_batch, input_batch = self.select_batch(gt_states, soft_estimation)
+        gt_states_batch, input_batch = self.select_batch(gt_states, soft_estimation.reshape(-1, self.n_states))
         loss = self.criterion(input=input_batch, target=gt_states_batch)
         return loss
 

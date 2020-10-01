@@ -26,7 +26,6 @@ class Trainer(object):
 
         # code parameters
         self.block_length = None
-        self.channel_blocks = None
         self.code_length = None
 
         # channel
@@ -35,15 +34,15 @@ class Trainer(object):
         self.use_ecc = None
         self.noisy_est_var = None
 
-        # validation hyperparameters
-        self.val_minibatch_num = None  # the more the merrier :)
-        self.val_minibatch_size = None  # the more the merrier :)
-        self.val_SNR_start = None
-        self.val_SNR_end = None
+        # gamma
         self.gamma_start = None
         self.gamma_end = None
         self.gamma_num = None
-        self.thresh_errors = None  # monte-carlo error threshold per point
+
+        # validation hyperparameters
+        self.channel_blocks = None
+        self.val_SNR_start = None
+        self.val_SNR_end = None
 
         # training hyperparameters
         self.train_minibatch_num = None
@@ -70,7 +69,7 @@ class Trainer(object):
         self.rand_gen = np.random.RandomState(self.noise_seed)
         self.word_rand_gen = np.random.RandomState(self.word_seed)
         self.n_states = 2 ** self.memory_length
-        self.transmission_length = self.block_length * self.channel_blocks
+        self.transmission_length = self.block_length
 
         # initialize matrices, datasets and detector
         self.initialize_detector()
@@ -158,7 +157,7 @@ class Trainer(object):
         self.snr_range = {'train': np.arange(self.train_SNR_start, self.train_SNR_end + 1),
                           'val': np.arange(self.val_SNR_start, self.val_SNR_end + 1)}
         self.gamma_range = np.linspace(self.gamma_start, self.gamma_end, self.gamma_num)
-        self.channel_blocks_per_phase = {'train': self.channel_blocks, 'val': self.channel_blocks}
+        self.channel_blocks_per_phase = {'train': 1, 'val': self.channel_blocks}
         self.channel_dataset = {
             phase: ChannelModelDataset(channel_type=self.channel_type,
                                        transmission_length=self.transmission_length,
@@ -206,19 +205,16 @@ class Trainer(object):
         :param snr: indice of snr in the snrs vector
         :return: ser for batch
         """
-        ser = 0
-        for minibatch in range(self.val_minibatch_num):
-            # create state_estimator_morning data
-            transmitted_words, received_words = self.channel_dataset['val'].__getitem__(snr=snr, gamma=gamma)
-            transmitted_words = transmitted_words.to(device=device)
-            received_words = received_words.to(device=device)
 
-            # decode and calculate accuracy
-            decoded_words = self.detector(received_words, 'val', gamma)
-            current_ser, fer, err_indices = calculate_error_rates(decoded_words, transmitted_words)
-            ser += current_ser
+        # create state_estimator_morning data
+        transmitted_words, received_words = self.channel_dataset['val'].__getitem__(snr=snr, gamma=gamma)
+        transmitted_words = transmitted_words.to(device=device)
+        received_words = received_words.to(device=device)
 
-        ser /= self.val_minibatch_num
+        # decode and calculate accuracy
+        decoded_words = self.detector(received_words, 'val', gamma)
+        ser, fer, err_indices = calculate_error_rates(decoded_words, transmitted_words)
+
         return ser
 
     def train(self):

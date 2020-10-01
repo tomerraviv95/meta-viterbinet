@@ -13,17 +13,21 @@ def create_transition_table(n_states: int) -> np.ndarray:
     return transition_table
 
 
-def acs_block(in_prob: torch.Tensor, llrs: torch.Tensor, transition_table, n_states) -> [torch.Tensor,
-                                                                                         torch.LongTensor]:
+def acs_block(in_prob: torch.Tensor, llrs: torch.Tensor, transition_table: torch.Tensor, n_states: int) -> [
+    torch.Tensor, torch.LongTensor]:
     """
     Viterbi ACS block
     :param in_prob: last stage probabilities, [batch_size,n_states]
     :param llrs: edge probabilities, [batch_size,1]
+    :param transition_table: transitions
+    :param n_states: number of states
     :return: current stage probabilities, [batch_size,n_states]
     """
-    trellis = (in_prob + llrs)[transition_table.long()]
+    transition_ind = transition_table.reshape(-1).repeat(in_prob.size(0)).long()
+    batches_ind = torch.arange(in_prob.size(0)).repeat_interleave(2 * n_states)
+    trellis = (in_prob + llrs)[batches_ind, transition_ind]
     reshaped_trellis = trellis.reshape(-1, n_states, 2)
-    return torch.min(reshaped_trellis, 2)
+    return torch.min(reshaped_trellis, dim=2)
 
 
 def calculate_states(memory_length: int, transmitted_words: torch.Tensor):

@@ -53,21 +53,21 @@ class VADetector(nn.Module):
         h = estimate_channel(self.memory_length, gamma, noisy_est_var=self.noisy_est_var)
 
         # initialize input probabilities
-        in_prob = torch.zeros(self.n_states).to(device)
+        in_prob = torch.zeros([y.shape[0], self.n_states]).to(device)
 
         # compute priors
         state_priors = self.compute_state_priors(h)
-        priors = torch.abs(y - state_priors).T
+        priors = torch.abs(y.unsqueeze(dim=2) - state_priors.T)
 
         if phase == 'val':
-            decoded_word = torch.zeros(y.shape[1]).to(device)
+            decoded_word = torch.zeros(y.shape).to(device)
             for i in range(self.transmission_length):
                 # get the lsb of the state
-                decoded_word[i] = torch.argmin(in_prob) % 2
+                decoded_word[:,i] = torch.argmin(in_prob,dim=1) % 2
                 # run one Vitebi stage
-                out_prob, _ = acs_block(in_prob, priors[i], self.transition_table, self.n_states)
+                out_prob, _ = acs_block(in_prob, priors[:,i], self.transition_table, self.n_states)
                 # update in-probabilities for next layer
-                in_prob = out_prob.reshape(-1)
+                in_prob = out_prob
 
             return decoded_word
         else:

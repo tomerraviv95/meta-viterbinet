@@ -39,19 +39,19 @@ class VNETDetector(nn.Module):
         :param phase: 'train' or 'val'
         """
         # initialize input probabilities
-        in_prob = torch.zeros(self.n_states).to(device)
+        in_prob = torch.zeros([y.shape[0], self.n_states]).to(device)
         # compute priors
-        priors = self.net(y.reshape(-1, 1))
+        priors = self.net(y.reshape(-1, 1)).reshape(y.shape[0], y.shape[1], self.n_states)
 
         if phase == 'val':
-            decoded_word = torch.zeros(y.shape[1]).to(device)
+            decoded_word = torch.zeros(y.shape).to(device)
             for i in range(self.transmission_length):
                 # get the lsb of the state
-                decoded_word[i] = torch.argmin(in_prob) % 2
-                # run one Vitebi stage
-                out_prob, _ = acs_block(in_prob, -priors[i], self.transition_table, self.n_states)
+                decoded_word[:, i] = torch.argmin(in_prob, dim=1) % 2
+                # run one Viterbi stage
+                out_prob, _ = acs_block(in_prob, -priors[:, i], self.transition_table, self.n_states)
                 # update in-probabilities for next layer
-                in_prob = out_prob.reshape(-1)
+                in_prob = out_prob
 
             return decoded_word
         else:
