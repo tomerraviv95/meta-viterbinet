@@ -51,14 +51,12 @@ class ChannelModelDataset(Dataset):
         y_full = np.empty((0, self.transmission_length))
         # accumulate words until reaches desired number
         while y_full.shape[0] < self.words:
-            # random word generation
             # generate word
             b = self.word_rand_gen.randint(0, 2, size=(1, self.transmission_length))
             # add zero bits
             padded_b = np.concatenate([b, np.zeros([b.shape[0], self.memory_length])], axis=1)
             # encoding - errors correction code
             c = self.encoding(padded_b)
-
             # transmit - validation
             if self.phase == 'val':
                 # channel_estimate
@@ -67,7 +65,7 @@ class ChannelModelDataset(Dataset):
             # transmit - training
             elif self.phase == 'train':
                 # if in training, each channel block goes through different h
-                y = np.zeros_like(b)
+                y = np.zeros(b.shape)
                 block_length = self.transmission_length // self.channel_blocks
                 for channel_block in range(self.channel_blocks):
                     block_start = channel_block * block_length
@@ -85,7 +83,6 @@ class ChannelModelDataset(Dataset):
         database.append((b_full, y_full))
 
     def transmit(self, c, h, snr):
-
         if self.channel_type == 'ISI_AWGN':
             # modulation
             s = BPSKModulator.modulate(c)
