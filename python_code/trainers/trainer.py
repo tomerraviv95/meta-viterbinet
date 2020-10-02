@@ -181,53 +181,6 @@ class Trainer(object):
         self.dataloaders = {phase: torch.utils.data.DataLoader(self.channel_dataset[phase])
                             for phase in ['train', 'val']}
 
-    def load_weights(self, *args):
-        """
-        Loads detector's weights from highest checkpoint in run_name
-        """
-        pass
-
-    # def evaluate(self) -> np.ndarray:
-    #     """
-    #     Monte-Carlo simulation over validation SNRs range
-    #     :return: ber, fer, iterations vectors
-    #     """
-    #     ser_total = np.zeros(len(self.snr_range['val']))
-    #     with torch.no_grad():
-    #         for snr_ind, snr in enumerate(self.snr_range['val']):
-    #             print(f'Starts evaluation at snr {snr}')
-    #             start = time()
-    #             ser_snr = 0
-    #             for gamma in self.gamma_range:
-    #                 self.load_weights(snr, gamma)
-    #                 current_ser_snr = self.single_eval(snr, gamma)
-    #                 ser_snr += current_ser_snr
-    #                 print(gamma, current_ser_snr)
-    #
-    #             # divide by the number of different gamma values
-    #             ser_snr /= self.gamma_num
-    #
-    #             ser_total[snr_ind] = ser_snr
-    #             print(f'Done. time: {time() - start}, ser: {ser_snr}')
-    #
-    #     return ser_total
-    #
-    # def single_eval(self, snr: float, gamma: float) -> float:
-    #     """
-    #     Evaluation at a single snr.
-    #     :param snr: indice of snr in the snrs vector
-    #     :return: ser for batch
-    #     """
-    #
-    #     # create state_estimator_morning data
-    #     transmitted_words, received_words = self.channel_dataset['val'].__getitem__(snr=snr, gamma=gamma)
-    #
-    #     # decode and calculate accuracy
-    #     decoded_words = self.detector(received_words, 'val', gamma)
-    #     ser, fer, err_indices = calculate_error_rates(decoded_words, transmitted_words)
-    #
-    #     return ser
-
     def single_eval(self, snr: float, gamma: float) -> float:
         """
         Evaluation at a single snr.
@@ -278,13 +231,25 @@ class Trainer(object):
                 best_ser = math.inf
 
                 for minibatch in range(1, self.train_minibatch_num + 1):
-                    # run single train loop
-                    loss = self.single_train_loop(snr, gamma)
-                    current_loss = loss.item()
-                    # back propagation
-                    self.optimizer.zero_grad()
-                    loss.backward()
-                    self.optimizer.step()
+
+                    # run training loop
+                    for i in range(10):
+                        # draw words
+                        transmitted_words, received_words = self.channel_dataset['train'].__getitem__(snr_list=[snr],
+                                                                                                      gamma=gamma)
+                        # pass through detector
+                        soft_estimation = self.detector(received_words, 'train')
+                        # calculate loss
+                        loss = self.calc_loss(soft_estimation=soft_estimation, transmitted_words=transmitted_words)
+                        # if loss is Nan inform the user
+                        if torch.sum(torch.isnan(loss)):
+                            print('Nan value')
+                        current_loss = loss.item()
+                        # back propagation
+                        self.optimizer.zero_grad()
+                        loss.backward()
+                        self.optimizer.step()
+
                     if minibatch % self.print_every_n_train_minibatches == 0:
                         # evaluate performance
                         ser = self.single_eval(snr, gamma)
@@ -298,21 +263,6 @@ class Trainer(object):
 
                 print(f'best ser - {best_ser}')
                 print('*' * 50)
-
-    def single_train_loop(self, snr: float, gamma: float) -> torch.Tensor:
-        # draw words
-        transmitted_words, received_words = self.channel_dataset['train'].__getitem__(snr_list=[snr], gamma=gamma)
-
-        # pass through detector
-        soft_estimation = self.detector(received_words, 'train')
-
-        # calculate loss
-        loss = self.calc_loss(soft_estimation=soft_estimation, transmitted_words=transmitted_words)
-
-        # if loss is Nan inform the user
-        if torch.sum(torch.isnan(loss)):
-            print('Nan value')
-        return loss
 
     def save_weights(self, current_loss: float, snr: float, gamma: float):
         torch.save({'model_state_dict': self.detector.state_dict(),
