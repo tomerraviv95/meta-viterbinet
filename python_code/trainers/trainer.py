@@ -27,6 +27,7 @@ class Trainer(object):
         # code parameters
         self.block_length = None
         self.code_length = None
+        self.channel_blocks = None
 
         # channel
         self.memory_length = None
@@ -40,10 +41,10 @@ class Trainer(object):
         self.gamma_num = None
 
         # validation hyperparameters
-        self.val_channel_blocks = None
         self.val_SNR_start = None
         self.val_SNR_end = None
         self.val_SNR_step = None
+        self.val_words = None
 
         # training hyperparameters
         self.train_minibatch_num = None
@@ -51,7 +52,6 @@ class Trainer(object):
         self.train_SNR_start = None
         self.train_SNR_end = None
         self.train_SNR_step = None
-        self.train_channel_blocks = None
         self.lr = None  # learning rate
         self.loss_type = None
         self.print_every_n_train_minibatches = None
@@ -61,6 +61,9 @@ class Trainer(object):
         # seed
         self.noise_seed = None
         self.word_seed = None
+
+        # weights dir
+        self.weights_dir = None
 
         # if any kwargs are passed, initialize the dict with them
         self.initialize_by_kwargs(**kwargs)
@@ -101,11 +104,12 @@ class Trainer(object):
             except AttributeError:
                 pass
 
-        self.weights_dir = os.path.join(WEIGHTS_DIR, self.run_name)
-        if not os.path.exists(self.weights_dir) and len(self.weights_dir):
-            os.makedirs(self.weights_dir)
-            # save config in output dir
-            copyfile(config_path, os.path.join(self.weights_dir, "config.yaml"))
+        if self.weights_dir is None:
+            self.weights_dir = os.path.join(WEIGHTS_DIR, self.run_name)
+            if not os.path.exists(self.weights_dir) and len(self.weights_dir):
+                os.makedirs(self.weights_dir)
+                # save config in output dir
+                copyfile(config_path, os.path.join(self.weights_dir, "config.yaml"))
 
     def get_name(self):
         return self.__name__()
@@ -160,11 +164,13 @@ class Trainer(object):
         self.snr_range = {'train': np.arange(self.train_SNR_start, self.train_SNR_end + 1, step=self.train_SNR_step),
                           'val': np.arange(self.val_SNR_start, self.val_SNR_end + 1, step=self.val_SNR_step)}
         self.gamma_range = np.linspace(self.gamma_start, self.gamma_end, self.gamma_num)
-        self.channel_blocks_per_phase = {'train': self.train_channel_blocks, 'val': self.val_channel_blocks}
+        self.channel_blocks_per_phase = {'train': self.channel_blocks, 'val': self.channel_blocks}
+        self.words_per_phase = {'train': 1, 'val': self.val_words}
         self.channel_dataset = {
             phase: ChannelModelDataset(channel_type=self.channel_type,
                                        transmission_length=self.transmission_length,
                                        channel_blocks=self.channel_blocks_per_phase[phase],
+                                       words=self.words_per_phase[phase],
                                        memory_length=self.memory_length,
                                        random=self.rand_gen,
                                        word_rand_gen=self.word_rand_gen,
@@ -180,6 +186,49 @@ class Trainer(object):
         """
         pass
 
+    # def evaluate(self) -> np.ndarray:
+    #     """
+    #     Monte-Carlo simulation over validation SNRs range
+    #     :return: ber, fer, iterations vectors
+    #     """
+    #     ser_total = np.zeros(len(self.snr_range['val']))
+    #     with torch.no_grad():
+    #         for snr_ind, snr in enumerate(self.snr_range['val']):
+    #             print(f'Starts evaluation at snr {snr}')
+    #             start = time()
+    #             ser_snr = 0
+    #             for gamma in self.gamma_range:
+    #                 self.load_weights(snr, gamma)
+    #                 current_ser_snr = self.single_eval(snr, gamma)
+    #                 ser_snr += current_ser_snr
+    #                 print(gamma, current_ser_snr)
+    #
+    #             # divide by the number of different gamma values
+    #             ser_snr /= self.gamma_num
+    #
+    #             ser_total[snr_ind] = ser_snr
+    #             print(f'Done. time: {time() - start}, ser: {ser_snr}')
+    #
+    #     return ser_total
+    #
+    # def single_eval(self, snr: float, gamma: float) -> float:
+    #     """
+    #     Evaluation at a single snr.
+    #     :param snr: indice of snr in the snrs vector
+    #     :return: ser for batch
+    #     """
+    #
+    #     # create state_estimator_morning data
+    #     transmitted_words, received_words = self.channel_dataset['val'].__getitem__(snr=snr, gamma=gamma)
+    #
+    #     # decode and calculate accuracy
+    #     decoded_words = self.detector(received_words, 'val', gamma)
+    #     ser, fer, err_indices = calculate_error_rates(decoded_words, transmitted_words)
+    #
+    #     return ser
+    def single_eval(self, gamma: float) -> np.ndarray:
+        pass
+
     def evaluate(self) -> np.ndarray:
         """
         Monte-Carlo simulation over validation SNRs range
@@ -187,39 +236,13 @@ class Trainer(object):
         """
         ser_total = np.zeros(len(self.snr_range['val']))
         with torch.no_grad():
-            for snr_ind, snr in enumerate(self.snr_range['val']):
-                print(f'Starts evaluation at snr {snr}')
+            for gamma_count, gamma in enumerate(self.gamma_range):
+                print(f'Starts evaluation at gamma {gamma}')
                 start = time()
-                ser_snr = 0
-                for gamma in self.gamma_range:
-                    self.load_weights(snr, gamma)
-                    ser_snr += self.single_eval(snr, gamma)
-
-                # divide by the number of different gamma values
-                ser_snr /= self.gamma_num
-
-                ser_total[snr_ind] = ser_snr
-                print(f'Done. time: {time() - start}, ser: {ser_snr}')
-
+                ser_total += self.single_eval(gamma)
+                print(f'Done. time: {time() - start}, ser: {ser_total / (gamma_count + 1)}')
+        ser_total /= self.gamma_num
         return ser_total
-
-    def single_eval(self, snr: float, gamma: float) -> float:
-        """
-        Evaluation at a single snr.
-        :param snr: indice of snr in the snrs vector
-        :return: ser for batch
-        """
-
-        # create state_estimator_morning data
-        transmitted_words, received_words = self.channel_dataset['val'].__getitem__(snr=snr, gamma=gamma)
-        transmitted_words = transmitted_words.to(device=device)
-        received_words = received_words.to(device=device)
-
-        # decode and calculate accuracy
-        decoded_words = self.detector(received_words, 'val', gamma)
-        ser, fer, err_indices = calculate_error_rates(decoded_words, transmitted_words)
-
-        return ser
 
     def train(self):
         """
@@ -262,8 +285,6 @@ class Trainer(object):
     def single_train_loop(self, snr: float, gamma: float) -> torch.Tensor:
         # draw words
         transmitted_words, received_words = self.channel_dataset['train'].__getitem__(snr=snr, gamma=gamma)
-        transmitted_words = transmitted_words.to(device=device)
-        received_words = received_words.to(device=device)
 
         # pass through detector
         soft_estimation = self.detector(received_words, 'train', gamma)

@@ -2,14 +2,15 @@
 run_name: 'asfa'
 
 # coding parameters
-block_length: 200
+block_length: 10000
 code_length: 255
+channel_blocks: 1
 use_ecc: False
 
 # channel
 memory_length: 4
 channel_type: 'ISI_AWGN' #'ISI_AWGN','Poisson'
-noisy_est_var: 0.1 # 0, 0.1 for ISI_AWGN, 0.08 for Poisson
+noisy_est_var: 0 # 0, 0.1 for ISI_AWGN, 0.08 for Poisson
 
 # gamma values
 gamma_start: 0.1
@@ -20,7 +21,7 @@ gamma_num: 20
 val_SNR_start: -6
 val_SNR_end: 10
 val_SNR_step: 2
-val_channel_blocks: 50 # the more the merrier
+val_words: 100
 
 # train hyperparameters
 train_minibatch_num: 500
@@ -28,7 +29,6 @@ train_minibatch_size: 32
 train_SNR_start: -6
 train_SNR_end: 10
 train_SNR_step: 2
-train_channel_blocks: 5
 lr: 0.001 # learning rate
 loss_type: 'CrossEntropy' # 'BCE','CrossEntropy','MSE'
 print_every_n_train_minibatches: 10

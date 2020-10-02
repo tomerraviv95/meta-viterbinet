@@ -1,3 +1,5 @@
+import math
+
 from python_code.channel.channel_estimation import estimate_channel
 from python_code.channel.modulator import BPSKModulator, OnOffModulator
 import numpy as np
@@ -19,6 +21,7 @@ class VADetector(nn.Module):
                  memory_length: int,
                  transmission_length: int,
                  channel_type: str,
+                 channel_blocks: int,
                  noisy_est_var: float):
 
         super(VADetector, self).__init__()
@@ -27,6 +30,7 @@ class VADetector(nn.Module):
         self.transmission_length = transmission_length
         self.n_states = n_states
         self.channel_type = channel_type
+        self.channel_blocks = channel_blocks
         self.noisy_est_var = noisy_est_var
         self.transition_table_array = create_transition_table(n_states)
         self.transition_table = torch.Tensor(self.transition_table_array).to(device)
@@ -49,26 +53,38 @@ class VADetector(nn.Module):
         The forward pass of the Viterbi algorithm
         :param y: input values (batch)
         """
-        # channel_estimate
-        h = estimate_channel(self.memory_length, gamma, noisy_est_var=self.noisy_est_var)
-
         # initialize input probabilities
         in_prob = torch.zeros([y.shape[0], self.n_states]).to(device)
 
-        # compute priors
-        state_priors = self.compute_state_priors(h)
-        priors = torch.abs(y.unsqueeze(dim=2) - state_priors.T)
+        # compute priors for all blocks length
+        block_length = self.transmission_length // self.channel_blocks
+        priors = torch.zeros([y.shape[0], y.shape[1], self.n_states]).to(device)
+
+        # each block goes through different channel estimation
+        for channel_block in range(self.channel_blocks):
+            priors[:, channel_block * block_length: (channel_block + 1) * block_length] = \
+                self.compute_likelihood_priors(gamma,
+                                               y[:, channel_block * block_length: (channel_block + 1) * block_length])
 
         if phase == 'val':
             decoded_word = torch.zeros(y.shape).to(device)
             for i in range(self.transmission_length):
                 # get the lsb of the state
-                decoded_word[:,i] = torch.argmin(in_prob,dim=1) % 2
-                # run one Vitebi stage
-                out_prob, _ = acs_block(in_prob, priors[:,i], self.transition_table, self.n_states)
+                decoded_word[:, i] = torch.argmin(in_prob, dim=1) % 2
+                # run one Viterbi stage
+                out_prob, _ = acs_block(in_prob, priors[:, i], self.transition_table, self.n_states)
                 # update in-probabilities for next layer
                 in_prob = out_prob
-
             return decoded_word
         else:
             raise NotImplementedError("No implemented training for this decoder!!!")
+
+    def compute_likelihood_priors(self, gamma, y):
+        # channel_estimate
+        h = estimate_channel(self.memory_length, gamma, noisy_est_var=self.noisy_est_var)
+        # compute priors
+        state_priors = self.compute_state_priors(h)
+        priors = y.unsqueeze(dim=2) - state_priors.T
+        # to llr representation
+        priors = priors ** 2 / 2 - math.log(math.sqrt(2 * math.pi))
+        return priors

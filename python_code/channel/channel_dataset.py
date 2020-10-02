@@ -12,7 +12,6 @@ from python_code.channel.channel_estimation import estimate_channel
 from python_code.channel.modulator import BPSKModulator, OnOffModulator
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-MAX_WORKERS = 16
 
 
 class ChannelModelDataset(Dataset):
@@ -23,6 +22,7 @@ class ChannelModelDataset(Dataset):
     def __init__(self, channel_type: str,
                  transmission_length: int,
                  channel_blocks: int,
+                 words: int,
                  memory_length: int,
                  random: mtrand.RandomState,
                  word_rand_gen: mtrand.RandomState,
@@ -34,6 +34,7 @@ class ChannelModelDataset(Dataset):
         self.random = random if random else np.random.RandomState()
         self.channel_type = channel_type
         self.channel_blocks = channel_blocks
+        self.words = words
         self.memory_length = memory_length
         self.noisy_est_var = noisy_est_var
         if use_ecc:
@@ -47,7 +48,7 @@ class ChannelModelDataset(Dataset):
         b_full = np.empty((0, self.transmission_length))
         y_full = np.empty((0, self.transmission_length))
         # accumulate words until reaches desired number
-        while y_full.shape[0] < self.channel_blocks:
+        while y_full.shape[0] < self.words:
             # random word generation
             # generate word
             b = self.word_rand_gen.randint(0, 2, size=(1, self.transmission_length))
@@ -56,7 +57,7 @@ class ChannelModelDataset(Dataset):
             # encoding - errors correction code
             c = self.encoding(padded_b)
             # channel_estimate
-            h = estimate_channel(self.memory_length, gamma, noisy_est_var=self.noisy_est_var)
+            h = estimate_channel(self.memory_length, gamma)
             if self.channel_type == 'ISI_AWGN':
                 # modulation
                 s = BPSKModulator.modulate(c)
@@ -69,17 +70,17 @@ class ChannelModelDataset(Dataset):
                 y = PoissonChannel.transmit(s=s, random=self.random, h=h, memory_length=self.memory_length)
             else:
                 raise Exception('No such channel defined!!!')
-
             # accumulate
             b_full = np.concatenate((b_full, b), axis=0)
             y_full = np.concatenate((y_full, y), axis=0)
 
         database.append((b_full, y_full))
 
-    def __getitem__(self, snr: float, gamma: float) -> Tuple[torch.Tensor, torch.Tensor]:
+    def __getitem__(self, snr_list: List[float], gamma: float) -> Tuple[torch.Tensor, torch.Tensor]:
         database = []
-        with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-            executor.submit(self.get_snr_data, snr, gamma, database)
+        # do not change max_workers
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            [executor.submit(self.get_snr_data, snr, gamma, database) for snr in snr_list]
         b, y = (np.concatenate(arrays) for arrays in zip(*database))
         b, y = torch.Tensor(b).to(device=device), torch.Tensor(y).to(device=device)
         return b, y

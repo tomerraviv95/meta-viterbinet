@@ -56,13 +56,13 @@ def get_ser_plot(dec: Trainer, run_over: bool):
 
     if os.path.isfile(plots_path) and not run_over:
         print("Loading plots")
-        ber_total = load_pkl(plots_path)
+        ser_total = load_pkl(plots_path)
     else:
         print("calculating fresh")
-        ber_total = dec.evaluate()
-        save_pkl(plots_path, ber_total)
+        ser_total = dec.evaluate()
+        save_pkl(plots_path, ser_total)
 
-    return ber_total
+    return ser_total
 
 
 def plot_all_curves(all_curves: List[Tuple[np.ndarray, np.ndarray, str]]):
@@ -101,14 +101,14 @@ if __name__ == '__main__':
     all_curves.append((snr_range, ser_awgn_isi_from_paper, 'Viterbi, CSI uncertainty (paper)'))
 
     # Viterbi - noisy estimate of CSI
-    dec2 = VATrainer(val_SNR_start=-6, val_SNR_end=10, noisy_est_var=0.1, gamma_start=0.1, gamma_end=2,
-                     gamma_num=20, channel_type='ISI_AWGN')
+    dec2 = VATrainer(val_SNR_start=-6, val_SNR_end=10, val_SNR_step=2, noisy_est_var=0.1,
+                     gamma_start=0.1, gamma_end=2, gamma_num=20, channel_type='ISI_AWGN')
     ser2 = get_ser_plot(dec2, run_over=run_over)
     all_curves.append((dec2.snr_range['val'], ser2, dec2.get_name()))
 
     # Viterbi - perfect CSI
-    dec1 = VATrainer(val_SNR_start=-6, val_SNR_end=10, noisy_est_var=0, gamma_start=0.1, gamma_end=2,
-                     gamma_num=20, channel_type='ISI_AWGN')
+    dec1 = VATrainer(val_SNR_start=-6, val_SNR_end=10, val_SNR_step=2, noisy_est_var=0,
+                     gamma_start=0.1, gamma_end=2, gamma_num=20, channel_type='ISI_AWGN', channel_blocks=10)
     ser1 = get_ser_plot(dec1, run_over=run_over)
     all_curves.append((dec1.snr_range['val'], ser1, dec1.get_name()))
 
