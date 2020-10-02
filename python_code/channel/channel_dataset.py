@@ -27,7 +27,8 @@ class ChannelModelDataset(Dataset):
                  random: mtrand.RandomState,
                  word_rand_gen: mtrand.RandomState,
                  noisy_est_var: float,
-                 use_ecc: bool):
+                 use_ecc: bool,
+                 phase: str):
 
         self.transmission_length = transmission_length
         self.word_rand_gen = word_rand_gen if word_rand_gen else np.random.RandomState()
@@ -37,6 +38,7 @@ class ChannelModelDataset(Dataset):
         self.words = words
         self.memory_length = memory_length
         self.noisy_est_var = noisy_est_var
+        self.phase = phase
         if use_ecc:
             self.encoding = lambda b: (np.dot(b, code_gm) % 2)
         else:
@@ -56,25 +58,47 @@ class ChannelModelDataset(Dataset):
             padded_b = np.concatenate([b, np.zeros([b.shape[0], self.memory_length])], axis=1)
             # encoding - errors correction code
             c = self.encoding(padded_b)
-            # channel_estimate
-            h = estimate_channel(self.memory_length, gamma)
-            if self.channel_type == 'ISI_AWGN':
-                # modulation
-                s = BPSKModulator.modulate(c)
-                # transmit through noisy channel
-                y = ISIAWGNChannel.transmit(s=s, random=self.random, h=h, snr=snr, memory_length=self.memory_length)
-            elif self.channel_type == 'Poisson':
-                # modulation
-                s = OnOffModulator.modulate(c)
-                # transmit through noisy channel
-                y = PoissonChannel.transmit(s=s, random=self.random, h=h, memory_length=self.memory_length)
+
+            # transmit - validation
+            if self.phase == 'val':
+                # channel_estimate
+                h = estimate_channel(self.memory_length, gamma)
+                y = self.transmit(c, h, snr)
+            # transmit - training
+            elif self.phase == 'train':
+                # if in training, each channel block goes through different h
+                y = np.zeros_like(b)
+                block_length = self.transmission_length // self.channel_blocks
+                for channel_block in range(self.channel_blocks):
+                    block_start = channel_block * block_length
+                    block_end = (channel_block + 1) * block_length
+                    h = estimate_channel(self.memory_length, gamma, noisy_est_var=self.noisy_est_var)
+                    y[:, block_start: block_end] = self.transmit(c[:, block_start: block_end + self.memory_length], h,
+                                                                 snr)
             else:
-                raise Exception('No such channel defined!!!')
+                raise NotImplementedError("No such phase implemented!!!")
+
             # accumulate
             b_full = np.concatenate((b_full, b), axis=0)
             y_full = np.concatenate((y_full, y), axis=0)
 
         database.append((b_full, y_full))
+
+    def transmit(self, c, h, snr):
+
+        if self.channel_type == 'ISI_AWGN':
+            # modulation
+            s = BPSKModulator.modulate(c)
+            # transmit through noisy channel
+            y = ISIAWGNChannel.transmit(s=s, random=self.random, h=h, snr=snr, memory_length=self.memory_length)
+        elif self.channel_type == 'Poisson':
+            # modulation
+            s = OnOffModulator.modulate(c)
+            # transmit through noisy channel
+            y = PoissonChannel.transmit(s=s, random=self.random, h=h, memory_length=self.memory_length)
+        else:
+            raise Exception('No such channel defined!!!')
+        return y
 
     def __getitem__(self, snr_list: List[float], gamma: float) -> Tuple[torch.Tensor, torch.Tensor]:
         database = []

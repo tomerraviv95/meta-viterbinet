@@ -32,7 +32,7 @@ class VNETDetector(nn.Module):
                   nn.Linear(HIDDEN2_SIZE, self.n_states)]
         self.net = nn.Sequential(*layers).to(device)
 
-    def forward(self, y: torch.Tensor, phase: str, *args) -> torch.Tensor:
+    def forward(self, y: torch.Tensor, phase: str) -> torch.Tensor:
         """
         The forward pass of the ViterbiNet algorithm
         :param y: input values

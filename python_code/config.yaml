@@ -1,10 +1,10 @@
 # general
-run_name: 'asfa'
+run_name: 'neww2'
 
 # coding parameters
 block_length: 10000
 code_length: 255
-channel_blocks: 1
+channel_blocks: 10
 use_ecc: False
 
 # channel
@@ -13,25 +13,25 @@ channel_type: 'ISI_AWGN' #'ISI_AWGN','Poisson'
 noisy_est_var: 0 # 0, 0.1 for ISI_AWGN, 0.08 for Poisson
 
 # gamma values
-gamma_start: 0.1
-gamma_end: 2
-gamma_num: 20
+gamma_start: 0.5
+gamma_end: 0.5
+gamma_num: 1
 
 # validation hyperparameters
-val_SNR_start: -6
+val_SNR_start: 10
 val_SNR_end: 10
 val_SNR_step: 2
-val_words: 100
+val_words: 1
 
 # train hyperparameters
 train_minibatch_num: 500
 train_minibatch_size: 32
-train_SNR_start: -6
+train_SNR_start: 10
 train_SNR_end: 10
 train_SNR_step: 2
 lr: 0.001 # learning rate
 loss_type: 'CrossEntropy' # 'BCE','CrossEntropy','MSE'
-print_every_n_train_minibatches: 10
+print_every_n_train_minibatches: 20
 optimizer_type: 'RMSprop' # 'Adam','RMSprop','SGD'
 early_stopping_mode: 'on' # 'on', 'off'
 

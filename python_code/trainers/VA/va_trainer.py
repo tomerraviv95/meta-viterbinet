@@ -34,7 +34,7 @@ class VATrainer(Trainer):
                                    channel_blocks=self.channel_blocks,
                                    noisy_est_var=self.noisy_est_var)
 
-    def single_eval(self, gamma: float) -> np.ndarray:
+    def gamma_eval(self, gamma: float) -> np.ndarray:
         """
         Evaluation at a single snr.
         :param snr: indice of snr in the snrs vector

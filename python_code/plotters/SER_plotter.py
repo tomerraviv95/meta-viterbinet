@@ -102,13 +102,13 @@ if __name__ == '__main__':
 
     # Viterbi - noisy estimate of CSI
     dec2 = VATrainer(val_SNR_start=-6, val_SNR_end=10, val_SNR_step=2, noisy_est_var=0.1,
-                     gamma_start=0.1, gamma_end=2, gamma_num=20, channel_type='ISI_AWGN')
+                     gamma_start=0.1, gamma_end=2, gamma_num=20, channel_type='ISI_AWGN', channel_blocks=10)
     ser2 = get_ser_plot(dec2, run_over=run_over)
     all_curves.append((dec2.snr_range['val'], ser2, dec2.get_name()))
 
     # Viterbi - perfect CSI
     dec1 = VATrainer(val_SNR_start=-6, val_SNR_end=10, val_SNR_step=2, noisy_est_var=0,
-                     gamma_start=0.1, gamma_end=2, gamma_num=20, channel_type='ISI_AWGN', channel_blocks=10)
+                     gamma_start=0.1, gamma_end=2, gamma_num=20, channel_type='ISI_AWGN')
     ser1 = get_ser_plot(dec1, run_over=run_over)
     all_curves.append((dec1.snr_range['val'], ser1, dec1.get_name()))
 

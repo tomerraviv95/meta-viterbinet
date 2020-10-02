@@ -145,7 +145,7 @@ class Trainer(object):
         else:
             raise NotImplementedError("No such optimizer implemented!!!")
         if self.early_stopping_mode == 'on':
-            self.es = EarlyStopping(patience=20)
+            self.es = EarlyStopping(patience=10)
         else:
             self.es = None
         if self.loss_type == 'BCE':
@@ -175,7 +175,8 @@ class Trainer(object):
                                        random=self.rand_gen,
                                        word_rand_gen=self.word_rand_gen,
                                        noisy_est_var=self.noisy_est_var,
-                                       use_ecc=self.use_ecc)
+                                       use_ecc=self.use_ecc,
+                                       phase=phase)
             for phase in ['train', 'val']}
         self.dataloaders = {phase: torch.utils.data.DataLoader(self.channel_dataset[phase])
                             for phase in ['train', 'val']}
@@ -226,7 +227,23 @@ class Trainer(object):
     #     ser, fer, err_indices = calculate_error_rates(decoded_words, transmitted_words)
     #
     #     return ser
-    def single_eval(self, gamma: float) -> np.ndarray:
+
+    def single_eval(self, snr: float, gamma: float) -> float:
+        """
+        Evaluation at a single snr.
+        :param snr: indice of snr in the snrs vector
+        :return: ser for batch
+        """
+        # draw words of given gamma for all snrs
+        transmitted_words, received_words = self.channel_dataset['val'].__getitem__(snr_list=[snr], gamma=gamma)
+
+        # decode and calculate accuracy
+        decoded_words = self.detector(received_words, 'val')
+        ser, fer, err_indices = calculate_error_rates(decoded_words, transmitted_words)
+
+        return ser
+
+    def gamma_eval(self, gamma) -> np.ndarray:
         pass
 
     def evaluate(self) -> np.ndarray:
@@ -239,7 +256,7 @@ class Trainer(object):
             for gamma_count, gamma in enumerate(self.gamma_range):
                 print(f'Starts evaluation at gamma {gamma}')
                 start = time()
-                ser_total += self.single_eval(gamma)
+                ser_total += self.gamma_eval(gamma)
                 print(f'Done. time: {time() - start}, ser: {ser_total / (gamma_count + 1)}')
         ser_total /= self.gamma_num
         return ser_total
@@ -284,10 +301,10 @@ class Trainer(object):
 
     def single_train_loop(self, snr: float, gamma: float) -> torch.Tensor:
         # draw words
-        transmitted_words, received_words = self.channel_dataset['train'].__getitem__(snr=snr, gamma=gamma)
+        transmitted_words, received_words = self.channel_dataset['train'].__getitem__(snr_list=[snr], gamma=gamma)
 
         # pass through detector
-        soft_estimation = self.detector(received_words, 'train', gamma)
+        soft_estimation = self.detector(received_words, 'train')
 
         # calculate loss
         loss = self.calc_loss(soft_estimation=soft_estimation, transmitted_words=transmitted_words)

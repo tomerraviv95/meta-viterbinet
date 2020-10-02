@@ -48,6 +48,16 @@ class VADetector(nn.Module):
         state_priors = np.dot(all_states_symbols, h.T)
         return torch.Tensor(state_priors).to(device)
 
+    def compute_likelihood_priors(self, gamma, y):
+        # channel_estimate
+        h = estimate_channel(self.memory_length, gamma, noisy_est_var=self.noisy_est_var)
+        # compute priors
+        state_priors = self.compute_state_priors(h)
+        priors = y.unsqueeze(dim=2) - state_priors.T
+        # to llr representation
+        priors = priors ** 2 / 2 - math.log(math.sqrt(2 * math.pi))
+        return priors
+
     def forward(self, y: torch.Tensor, phase: str, gamma: float):
         """
         The forward pass of the Viterbi algorithm
@@ -79,12 +89,3 @@ class VADetector(nn.Module):
         else:
             raise NotImplementedError("No implemented training for this decoder!!!")
 
-    def compute_likelihood_priors(self, gamma, y):
-        # channel_estimate
-        h = estimate_channel(self.memory_length, gamma, noisy_est_var=self.noisy_est_var)
-        # compute priors
-        state_priors = self.compute_state_priors(h)
-        priors = y.unsqueeze(dim=2) - state_priors.T
-        # to llr representation
-        priors = priors ** 2 / 2 - math.log(math.sqrt(2 * math.pi))
-        return priors
