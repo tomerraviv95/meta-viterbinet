@@ -1,5 +1,5 @@
 # general
-run_name: 'best_paper_recreation'
+run_name: 'paper_recreation'
 
 # coding parameters
 block_length: 50000

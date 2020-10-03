@@ -127,7 +127,7 @@ def add_viterbi_paper(all_curves):
 def add_noisy_viterbinet(all_curves):
     dec3 = VNETTrainer(val_SNR_start=-6, val_SNR_end=10, noisy_est_var=0.1, gamma_start=0.1, gamma_end=2,
                        gamma_num=20, channel_type='ISI_AWGN',
-                       weights_dir=os.path.join(WEIGHTS_DIR, 'best_paper_recreation_noisy'))
+                       weights_dir=os.path.join(WEIGHTS_DIR, 'paper_recreation_noisy'))
     ser3 = get_ser_plot(dec3, run_over=run_over)
     all_curves.append((dec3.snr_range['val'], ser3, dec3.get_name()))
 
@@ -135,7 +135,7 @@ def add_noisy_viterbinet(all_curves):
 def add_viterbinet(all_curves):
     dec4 = VNETTrainer(val_SNR_start=-6, val_SNR_end=10, val_SNR_step=2, noisy_est_var=0,
                        gamma_start=0.1, gamma_end=2, gamma_num=20, channel_type='ISI_AWGN',
-                       weights_dir=os.path.join(WEIGHTS_DIR, 'best_paper_recreation'))
+                       weights_dir=os.path.join(WEIGHTS_DIR, 'paper_recreation'))
     ser4 = get_ser_plot(dec4, run_over=run_over)
     all_curves.append((dec4.snr_range['val'], ser4, dec4.get_name()))
 
