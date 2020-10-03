@@ -26,7 +26,7 @@ class VNETDetector(nn.Module):
 
     def initialize_dnn(self):
         layers = [nn.Linear(1, HIDDEN1_SIZE),
-                  nn.Sigmoid(),
+                  nn.ReLU(),
                   nn.Linear(HIDDEN1_SIZE, HIDDEN2_SIZE),
                   nn.ReLU(),
                   nn.Linear(HIDDEN2_SIZE, self.n_states)]

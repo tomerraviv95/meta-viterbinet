@@ -1,5 +1,3 @@
-import math
-
 from python_code.channel.channel_dataset import ChannelModelDataset
 from python_code.utils.early_stopping import EarlyStopping
 from python_code.utils.metrics import calculate_error_rates
@@ -12,10 +10,10 @@ import torch
 import os
 from time import time
 import numpy as np
-
-MAX_RUNS = 10 ** 5
+import math
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+STEPS_NUM = 10
 
 
 class Trainer(object):
@@ -232,13 +230,14 @@ class Trainer(object):
 
                 for minibatch in range(1, self.train_minibatch_num + 1):
 
+                    # draw words
+                    transmitted_words, received_words = self.channel_dataset['train'].__getitem__(snr_list=[snr],
+                                                                                                  gamma=gamma)
+                    # pass through detector
+                    soft_estimation = self.detector(received_words, 'train')
+
                     # run training loop
-                    for i in range(10):
-                        # draw words
-                        transmitted_words, received_words = self.channel_dataset['train'].__getitem__(snr_list=[snr],
-                                                                                                      gamma=gamma)
-                        # pass through detector
-                        soft_estimation = self.detector(received_words, 'train')
+                    for i in range(STEPS_NUM):
                         # calculate loss
                         loss = self.calc_loss(soft_estimation=soft_estimation, transmitted_words=transmitted_words)
                         # if loss is Nan inform the user
@@ -247,7 +246,7 @@ class Trainer(object):
                         current_loss = loss.item()
                         # back propagation
                         self.optimizer.zero_grad()
-                        loss.backward()
+                        loss.backward(retain_graph=True)
                         self.optimizer.step()
 
                     if minibatch % self.print_every_n_train_minibatches == 0:
