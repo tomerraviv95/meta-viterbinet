@@ -1,8 +1,8 @@
 # general
-run_name: 'paper_recreation'
+run_name: 'test'
 
 # coding parameters
-block_length: 50000
+block_length: 5000
 code_length: 255
 channel_blocks: 10
 use_ecc: False

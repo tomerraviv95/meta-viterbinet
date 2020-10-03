@@ -245,7 +245,9 @@ class Trainer(object):
                             print('Nan value')
                         current_loss = loss.item()
                         # back propagation
-                        self.optimizer.zero_grad()
+                        for param in self.detector.parameters():
+                            param.grad = None
+                        # self.optimizer.zero_grad()
                         loss.backward(retain_graph=True)
                         self.optimizer.step()
 
