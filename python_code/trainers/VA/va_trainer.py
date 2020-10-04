@@ -48,12 +48,16 @@ class VATrainer(Trainer):
             gamma=gamma)
 
         # decode and calculate accuracy
-        decoded_words = self.detector(received_words, 'val', gamma)
+        detected_words = self.detector(received_words, 'val', gamma)
+
+        if self.use_ecc:
+            decoded_words = self.decoder.forward(detected_words.reshape(-1, 255))
+            detected_words = decoded_words.reshape(-1, 2040)[:,:1784].reshape([-1,1784])
 
         for snr_ind in range(len(self.snr_range['val'])):
             start_ind = snr_ind * self.val_words
             end_ind = (snr_ind + 1) * self.val_words
-            ser, fer, err_indices = calculate_error_rates(decoded_words[start_ind:end_ind],
+            ser, fer, err_indices = calculate_error_rates(detected_words[start_ind:end_ind],
                                                           transmitted_words[start_ind:end_ind])
             ser_total[snr_ind] = ser
 

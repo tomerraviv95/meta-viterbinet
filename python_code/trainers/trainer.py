@@ -1,4 +1,5 @@
 from python_code.channel.channel_dataset import ChannelModelDataset
+from python_code.utils.berlekamp_massey import BerlekampMasseyHardDecoder
 from python_code.utils.early_stopping import EarlyStopping
 from python_code.utils.metrics import calculate_error_rates
 from dir_definitions import CONFIG_PATH, WEIGHTS_DIR
@@ -73,11 +74,12 @@ class Trainer(object):
         self.rand_gen = np.random.RandomState(self.noise_seed)
         self.word_rand_gen = np.random.RandomState(self.word_seed)
         self.n_states = 2 ** self.memory_length
-        self.transmission_length = self.block_length
+        self.transmission_length = self.block_length if not self.use_ecc else 2040
 
         # initialize matrices, datasets and detector
         self.initialize_detector()
         self.initialize_dataloaders()
+        self.decoder = BerlekampMasseyHardDecoder(255, 16)
 
     def initialize_by_kwargs(self, **kwargs):
         for k, v in kwargs.items():
@@ -166,6 +168,7 @@ class Trainer(object):
         self.words_per_phase = {'train': 1, 'val': self.val_words}
         self.channel_dataset = {
             phase: ChannelModelDataset(channel_type=self.channel_type,
+                                       block_length=self.block_length,
                                        transmission_length=self.transmission_length,
                                        channel_blocks=self.channel_blocks_per_phase[phase],
                                        words=self.words_per_phase[phase],
@@ -189,8 +192,13 @@ class Trainer(object):
         transmitted_words, received_words = self.channel_dataset['val'].__getitem__(snr_list=[snr], gamma=gamma)
 
         # decode and calculate accuracy
-        decoded_words = self.detector(received_words, 'val')
-        ser, fer, err_indices = calculate_error_rates(decoded_words, transmitted_words)
+        detected_words = self.detector(received_words, 'val')
+
+        if self.use_ecc:
+            decoded_words = self.decoder.forward(detected_words.reshape(-1, 255))
+            detected_words = decoded_words.reshape(-1, 2040)[:,:1784].reshape([-1,1784])
+
+        ser, fer, err_indices = calculate_error_rates(detected_words, transmitted_words)
 
         return ser
 
