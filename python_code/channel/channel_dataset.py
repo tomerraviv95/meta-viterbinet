@@ -10,7 +10,7 @@ from typing import Tuple, List
 from python_code.channel.channel import ISIAWGNChannel, PoissonChannel
 from python_code.channel.channel_estimation import estimate_channel
 from python_code.channel.modulator import BPSKModulator, OnOffModulator
-from python_code.utils.rs_codes import rs_encode_msg
+from python_code.utils.rs_codes import rs_encode_msg, encode
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -30,6 +30,7 @@ class ChannelModelDataset(Dataset):
                  word_rand_gen: mtrand.RandomState,
                  noisy_est_var: float,
                  use_ecc: bool,
+                 fading: bool,
                  phase: str):
 
         self.block_length = block_length
@@ -41,9 +42,10 @@ class ChannelModelDataset(Dataset):
         self.words = words
         self.memory_length = memory_length
         self.noisy_est_var = noisy_est_var
+        self.fading = fading
         self.phase = phase
         if use_ecc:
-            self.encoding = lambda b: rs_encode_msg(b)
+            self.encoding = lambda b: encode(b)
         else:
             self.encoding = lambda b: b
 
@@ -52,18 +54,19 @@ class ChannelModelDataset(Dataset):
             database = []
         b_full = np.empty((0, self.block_length))
         y_full = np.empty((0, self.transmission_length))
+        index = 0
         # accumulate words until reaches desired number
         while y_full.shape[0] < self.words:
             # generate word
             b = self.word_rand_gen.randint(0, 2, size=(1, self.block_length))
             # encoding - errors correction code
-            c = self.encoding(b)
+            c = self.encoding(b).reshape(1, -1)
             # add zero bits
             padded_c = np.concatenate([c, np.zeros([c.shape[0], self.memory_length])], axis=1)
             # transmit - validation
             if self.phase == 'val':
                 # channel_estimate
-                h = estimate_channel(self.memory_length, gamma)
+                h = estimate_channel(self.memory_length, gamma, fading=self.fading, index=index)
                 y = self.transmit(padded_c, h, snr)
             # transmit - training
             elif self.phase == 'train':
@@ -73,15 +76,18 @@ class ChannelModelDataset(Dataset):
                 for channel_block in range(self.channel_blocks):
                     block_start = channel_block * block_length
                     block_end = (channel_block + 1) * block_length
-                    h = estimate_channel(self.memory_length, gamma, noisy_est_var=self.noisy_est_var)
-                    y[:, block_start: block_end] = self.transmit(padded_c[:, block_start: block_end + self.memory_length], h,
-                                                                 snr)
+                    h = estimate_channel(self.memory_length, gamma, noisy_est_var=self.noisy_est_var,
+                                         fading=self.fading, index=index)
+                    y[:, block_start: block_end] = self.transmit(
+                        padded_c[:, block_start: block_end + self.memory_length], h,
+                        snr)
             else:
                 raise NotImplementedError("No such phase implemented!!!")
 
             # accumulate
             b_full = np.concatenate((b_full, b), axis=0)
             y_full = np.concatenate((y_full, y), axis=0)
+            index += 1
 
         database.append((b_full, y_full))
 

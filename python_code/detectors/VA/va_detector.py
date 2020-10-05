@@ -20,18 +20,22 @@ class VADetector(nn.Module):
                  n_states: int,
                  memory_length: int,
                  transmission_length: int,
+                 val_words: int,
                  channel_type: str,
                  channel_blocks: int,
-                 noisy_est_var: float):
+                 noisy_est_var: float,
+                 fading: bool):
 
         super(VADetector, self).__init__()
         self.start_state = 0
         self.memory_length = memory_length
         self.transmission_length = transmission_length
+        self.val_words = val_words
         self.n_states = n_states
         self.channel_type = channel_type
         self.channel_blocks = channel_blocks
         self.noisy_est_var = noisy_est_var
+        self.fading = fading
         self.transition_table_array = create_transition_table(n_states)
         self.transition_table = torch.Tensor(self.transition_table_array).to(device)
 
@@ -50,10 +54,13 @@ class VADetector(nn.Module):
 
     def compute_likelihood_priors(self, gamma, y):
         # channel_estimate
-        h = estimate_channel(self.memory_length, gamma, noisy_est_var=self.noisy_est_var)
+        h = np.concatenate([estimate_channel(self.memory_length, gamma, noisy_est_var=self.noisy_est_var,
+                                             fading=self.fading, index=index) for index in range(self.val_words)],
+                           axis=0)
         # compute priors
         state_priors = self.compute_state_priors(h)
-        priors = y.unsqueeze(dim=2) - state_priors.T
+        priors = y.unsqueeze(dim=2) - state_priors.T.repeat(repeats=[y.shape[0] // state_priors.shape[1], 1]).unsqueeze(
+            dim=1)
         # to llr representation
         priors = priors ** 2 / 2 - math.log(math.sqrt(2 * math.pi))
         return priors
@@ -88,4 +95,3 @@ class VADetector(nn.Module):
             return decoded_word
         else:
             raise NotImplementedError("No implemented training for this decoder!!!")
-

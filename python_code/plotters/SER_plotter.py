@@ -152,6 +152,22 @@ def add_viterbinet_paper(all_curves):
     all_curves.append((snr_range, ser_awgn_perfect_from_paper, 'ViterbiNet, perfect CSI (paper)'))
 
 
+def add_viterbi_initial_csi(all_curves):
+    dec1 = VATrainer(val_SNR_start=6, val_SNR_end=14, val_SNR_step=2, noisy_est_var=0,
+                     fading=True, fading_is_known=False, use_ecc=True, val_block_length=1784,
+                     gamma_start=0.2, gamma_end=0.2, gamma_num=1, channel_type='ISI_AWGN')
+    ser1 = get_ser_plot(dec1, run_over=run_over)
+    all_curves.append((dec1.snr_range['val'], ser1, 'Viterbi, Initial CSI'))
+
+
+def add_viterbi_full_csi(all_curves):
+    dec1 = VATrainer(val_SNR_start=6, val_SNR_end=14, val_SNR_step=2, noisy_est_var=0,
+                     fading=True, fading_is_known=True, use_ecc=True, val_block_length=1784,
+                     gamma_start=0.2, gamma_end=0.2, gamma_num=1, channel_type='ISI_AWGN')
+    ser1 = get_ser_plot(dec1, run_over=run_over)
+    all_curves.append((dec1.snr_range['val'], ser1, 'Viterbi, Full CSI'))
+
+
 if __name__ == '__main__':
     run_over = False
     all_curves = []

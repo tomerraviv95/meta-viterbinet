@@ -4,6 +4,8 @@ from python_code.trainers.trainer import Trainer
 import numpy as np
 import torch
 
+from python_code.utils.rs_codes import decode
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
@@ -29,10 +31,12 @@ class VATrainer(Trainer):
         """
         self.detector = VADetector(n_states=self.n_states,
                                    memory_length=self.memory_length,
-                                   transmission_length=self.transmission_length,
+                                   transmission_length=self.transmission_lengths['val'],
+                                   val_words=self.val_words,
                                    channel_type=self.channel_type,
                                    channel_blocks=self.channel_blocks,
-                                   noisy_est_var=self.noisy_est_var)
+                                   noisy_est_var=self.noisy_est_var,
+                                   fading=self.fading if self.fading_is_known else False)
 
     def gamma_eval(self, gamma: float) -> np.ndarray:
         """
@@ -51,8 +55,8 @@ class VATrainer(Trainer):
         detected_words = self.detector(received_words, 'val', gamma)
 
         if self.use_ecc:
-            decoded_words = self.decoder.forward(detected_words.reshape(-1, 255))
-            detected_words = decoded_words.reshape(-1, 2040)[:,:1784].reshape([-1,1784])
+            decoded_words = [decode(detected_word) for detected_word in detected_words.cpu().numpy()]
+            detected_words = torch.Tensor(decoded_words).to(device)
 
         for snr_ind in range(len(self.snr_range['val'])):
             start_ind = snr_ind * self.val_words

@@ -2,8 +2,6 @@
 run_name: 'test'
 
 # coding parameters
-block_length: 1784
-code_length: 111
 channel_blocks: 10
 use_ecc: True
 
@@ -11,6 +9,7 @@ use_ecc: True
 memory_length: 4
 channel_type: 'ISI_AWGN' #'ISI_AWGN','Poisson'
 noisy_est_var: 0 # 0, 0.1 for ISI_AWGN, 0.08 for Poisson
+fading: True
 
 # gamma values
 gamma_start: 0.2
@@ -18,12 +17,14 @@ gamma_end: 0.2
 gamma_num: 1
 
 # validation hyperparameters
-val_SNR_start: 10
-val_SNR_end: 10
+val_block_length: 1784
+val_SNR_start: 6
+val_SNR_end: 14
 val_SNR_step: 2
-val_words: 1
+val_words: 200
 
 # train hyperparameters
+train_block_length: 5000
 train_minibatch_num: 100
 train_minibatch_size: 16
 train_SNR_start: 10
@@ -38,3 +39,6 @@ early_stopping_mode: 'on' # 'on', 'off'
 # seed
 noise_seed: 345000
 word_seed: 786000
+
+# classic Viterbi
+fading_is_known: False

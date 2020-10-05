@@ -24,15 +24,15 @@ class Trainer(object):
         self.run_name = None
 
         # code parameters
-        self.block_length = None
-        self.code_length = None
+
         self.channel_blocks = None
+        self.use_ecc = None
 
         # channel
         self.memory_length = None
         self.channel_type = None
-        self.use_ecc = None
         self.noisy_est_var = None
+        self.fading = None
 
         # gamma
         self.gamma_start = None
@@ -40,12 +40,14 @@ class Trainer(object):
         self.gamma_num = None
 
         # validation hyperparameters
+        self.val_block_length = None
         self.val_SNR_start = None
         self.val_SNR_end = None
         self.val_SNR_step = None
         self.val_words = None
 
         # training hyperparameters
+        self.train_block_length = None
         self.train_minibatch_num = None
         self.train_minibatch_size = None
         self.train_SNR_start = None
@@ -61,6 +63,9 @@ class Trainer(object):
         self.noise_seed = None
         self.word_seed = None
 
+        # classic Viterbi
+        self.fading_is_known = None
+
         # weights dir
         self.weights_dir = None
 
@@ -74,12 +79,11 @@ class Trainer(object):
         self.rand_gen = np.random.RandomState(self.noise_seed)
         self.word_rand_gen = np.random.RandomState(self.word_seed)
         self.n_states = 2 ** self.memory_length
-        self.transmission_length = self.block_length if not self.use_ecc else 2040
+        self.check_code_properties()
 
         # initialize matrices, datasets and detector
-        self.initialize_detector()
         self.initialize_dataloaders()
-        self.decoder = BerlekampMasseyHardDecoder(255, 16)
+        self.initialize_detector()
 
     def initialize_by_kwargs(self, **kwargs):
         for k, v in kwargs.items():
@@ -113,6 +117,10 @@ class Trainer(object):
 
     def get_name(self):
         return self.__name__()
+
+    def check_code_properties(self):
+        if self.use_ecc and self.val_block_length != 1784:
+            raise ValueError('Block length is not supported with ECC!!! Only 1784 is supported')
 
     def initialize_detector(self):
         """
@@ -166,10 +174,13 @@ class Trainer(object):
         self.gamma_range = np.linspace(self.gamma_start, self.gamma_end, self.gamma_num)
         self.channel_blocks_per_phase = {'train': self.channel_blocks, 'val': self.channel_blocks}
         self.words_per_phase = {'train': 1, 'val': self.val_words}
+        self.block_lengths = {'train': self.train_block_length, 'val': self.val_block_length}
+        self.transmission_lengths = {'train': self.train_block_length if not self.use_ecc else 2040,
+                                     'val': self.val_block_length if not self.use_ecc else 2040}
         self.channel_dataset = {
             phase: ChannelModelDataset(channel_type=self.channel_type,
-                                       block_length=self.block_length,
-                                       transmission_length=self.transmission_length,
+                                       block_length=self.block_lengths[phase],
+                                       transmission_length=self.transmission_lengths[phase],
                                        channel_blocks=self.channel_blocks_per_phase[phase],
                                        words=self.words_per_phase[phase],
                                        memory_length=self.memory_length,
@@ -177,6 +188,7 @@ class Trainer(object):
                                        word_rand_gen=self.word_rand_gen,
                                        noisy_est_var=self.noisy_est_var,
                                        use_ecc=self.use_ecc,
+                                       fading=self.fading,
                                        phase=phase)
             for phase in ['train', 'val']}
         self.dataloaders = {phase: torch.utils.data.DataLoader(self.channel_dataset[phase])
@@ -196,7 +208,7 @@ class Trainer(object):
 
         if self.use_ecc:
             decoded_words = self.decoder.forward(detected_words.reshape(-1, 255))
-            detected_words = decoded_words.reshape(-1, 2040)[:,:1784].reshape([-1,1784])
+            detected_words = decoded_words.reshape(-1, 2040)[:, :1784].reshape([-1, 1784])
 
         ser, fer, err_indices = calculate_error_rates(detected_words, transmitted_words)
 
