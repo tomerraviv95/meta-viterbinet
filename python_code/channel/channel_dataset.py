@@ -28,7 +28,8 @@ class ChannelModelDataset(Dataset):
                  word_rand_gen: mtrand.RandomState,
                  noisy_est_var: float,
                  use_ecc: bool,
-                 fading: bool,
+                 fading_in_channel: bool,
+                 fading_in_decoder: bool,
                  phase: str):
 
         self.block_length = block_length
@@ -40,9 +41,10 @@ class ChannelModelDataset(Dataset):
         self.words = words
         self.memory_length = memory_length
         self.noisy_est_var = noisy_est_var
-        self.fading = fading
+        self.fading_in_channel = fading_in_channel
+        self.fading_in_decoder = fading_in_decoder
         self.phase = phase
-        if use_ecc:
+        if use_ecc and phase == 'val':
             self.encoding = lambda b: encode(b)
         else:
             self.encoding = lambda b: b
@@ -64,7 +66,7 @@ class ChannelModelDataset(Dataset):
             # transmit - validation
             if self.phase == 'val':
                 # channel_estimate
-                h = estimate_channel(self.memory_length, gamma, fading=self.fading, index=index)
+                h = estimate_channel(self.memory_length, gamma, fading=self.fading_in_channel, index=index)
                 y = self.transmit(padded_c, h, snr)
             # transmit - training
             elif self.phase == 'train':
@@ -74,8 +76,9 @@ class ChannelModelDataset(Dataset):
                 for channel_block in range(self.channel_blocks):
                     block_start = channel_block * block_length
                     block_end = (channel_block + 1) * block_length
+                    ## composite training if fading_in_decoder is True, else regular
                     h = estimate_channel(self.memory_length, gamma, noisy_est_var=self.noisy_est_var,
-                                         fading=self.fading, index=index)
+                                         fading=self.fading_in_decoder, index=3 * channel_block - 1)
                     y[:, block_start: block_end] = self.transmit(
                         padded_c[:, block_start: block_end + self.memory_length], h,
                         snr)

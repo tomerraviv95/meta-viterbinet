@@ -1,4 +1,5 @@
 from python_code.channel.channel_dataset import ChannelModelDataset
+from python_code.ecc.rs_main import decode
 from python_code.utils.early_stopping import EarlyStopping
 from python_code.utils.metrics import calculate_error_rates
 from dir_definitions import CONFIG_PATH, WEIGHTS_DIR
@@ -31,7 +32,8 @@ class Trainer(object):
         self.memory_length = None
         self.channel_type = None
         self.noisy_est_var = None
-        self.fading = None
+        self.fading_in_channel = None
+        self.fading_in_decoder = None
 
         # gamma
         self.gamma_start = None
@@ -61,9 +63,6 @@ class Trainer(object):
         # seed
         self.noise_seed = None
         self.word_seed = None
-
-        # classic Viterbi
-        self.fading_is_known = None
 
         # weights dir
         self.weights_dir = None
@@ -174,7 +173,7 @@ class Trainer(object):
         self.channel_blocks_per_phase = {'train': self.channel_blocks, 'val': self.channel_blocks}
         self.words_per_phase = {'train': 1, 'val': self.val_words}
         self.block_lengths = {'train': self.train_block_length, 'val': self.val_block_length}
-        self.transmission_lengths = {'train': self.train_block_length if not self.use_ecc else 2040,
+        self.transmission_lengths = {'train': self.train_block_length,
                                      'val': self.val_block_length if not self.use_ecc else 2040}
         self.channel_dataset = {
             phase: ChannelModelDataset(channel_type=self.channel_type,
@@ -187,7 +186,8 @@ class Trainer(object):
                                        word_rand_gen=self.word_rand_gen,
                                        noisy_est_var=self.noisy_est_var,
                                        use_ecc=self.use_ecc,
-                                       fading=self.fading,
+                                       fading_in_channel=self.fading_in_channel,
+                                       fading_in_decoder=self.fading_in_decoder,
                                        phase=phase)
             for phase in ['train', 'val']}
         self.dataloaders = {phase: torch.utils.data.DataLoader(self.channel_dataset[phase])
@@ -206,8 +206,8 @@ class Trainer(object):
         detected_words = self.detector(received_words, 'val')
 
         if self.use_ecc:
-            decoded_words = self.decoder.forward(detected_words.reshape(-1, 255))
-            detected_words = decoded_words.reshape(-1, 2040)[:, :1784].reshape([-1, 1784])
+            decoded_words = [decode(detected_word) for detected_word in detected_words.cpu().numpy()]
+            detected_words = torch.Tensor(decoded_words).to(device)
 
         ser, fer, err_indices = calculate_error_rates(detected_words, transmitted_words)
 

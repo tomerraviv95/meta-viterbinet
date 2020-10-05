@@ -1,3 +1,5 @@
+from typing import Dict
+
 from python_code.utils.trellis_utils import create_transition_table, acs_block
 import torch.nn as nn
 import torch
@@ -14,11 +16,11 @@ class VNETDetector(nn.Module):
 
     def __init__(self,
                  n_states: int,
-                 transmission_length: int):
+                 transmission_lengths: Dict[str, int]):
 
         super(VNETDetector, self).__init__()
         self.start_state = 0
-        self.transmission_length = transmission_length
+        self.transmission_lengths = transmission_lengths
         self.n_states = n_states
         self.transition_table_array = create_transition_table(n_states)
         self.transition_table = torch.Tensor(self.transition_table_array).to(device)
@@ -45,7 +47,7 @@ class VNETDetector(nn.Module):
 
         if phase == 'val':
             decoded_word = torch.zeros(y.shape).to(device)
-            for i in range(self.transmission_length):
+            for i in range(self.transmission_lengths['val']):
                 # get the lsb of the state
                 decoded_word[:, i] = torch.argmin(in_prob, dim=1) % 2
                 # run one Viterbi stage

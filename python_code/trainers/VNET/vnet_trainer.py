@@ -30,7 +30,7 @@ class VNETTrainer(Trainer):
         Loads the VNET detector
         """
         self.detector = VNETDetector(n_states=self.n_states,
-                                     transmission_length=self.transmission_length)
+                                     transmission_lengths=self.transmission_lengths)
 
     def load_weights(self, snr: float, gamma: float):
         """

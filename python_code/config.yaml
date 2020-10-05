@@ -9,7 +9,8 @@ use_ecc: True
 memory_length: 4
 channel_type: 'ISI_AWGN' #'ISI_AWGN','Poisson'
 noisy_est_var: 0 # 0, 0.1 for ISI_AWGN, 0.08 for Poisson
-fading: True
+fading_in_channel: True
+fading_in_decoder: False
 
 # gamma values
 gamma_start: 0.2
@@ -27,12 +28,12 @@ val_words: 200
 train_block_length: 5000
 train_minibatch_num: 100
 train_minibatch_size: 16
-train_SNR_start: 10
-train_SNR_end: 10
+train_SNR_start: 6
+train_SNR_end: 14
 train_SNR_step: 2
 lr: 0.001 # learning rate
 loss_type: 'CrossEntropy' # 'BCE','CrossEntropy','MSE'
-print_every_n_train_minibatches: 5
+print_every_n_train_minibatches: 10
 optimizer_type: 'Adam' # 'Adam','RMSprop','SGD'
 early_stopping_mode: 'on' # 'on', 'off'
 
@@ -40,5 +41,3 @@ early_stopping_mode: 'on' # 'on', 'off'
 noise_seed: 345000
 word_seed: 786000
 
-# classic Viterbi
-fading_is_known: False

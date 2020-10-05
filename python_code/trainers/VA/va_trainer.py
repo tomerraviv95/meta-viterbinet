@@ -36,7 +36,7 @@ class VATrainer(Trainer):
                                    channel_type=self.channel_type,
                                    channel_blocks=self.channel_blocks,
                                    noisy_est_var=self.noisy_est_var,
-                                   fading=self.fading if self.fading_is_known else False)
+                                   fading=self.fading_in_decoder)
 
     def gamma_eval(self, gamma: float) -> np.ndarray:
         """
