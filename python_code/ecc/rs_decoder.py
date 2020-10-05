@@ -1,4 +1,4 @@
-from python_code.ecc.polynomial_utils import gf_poly_eval, gf_pow, gf_poly_scale, gf_poly_add, gf_inverse, gf_mul, \
+from python_code.ecc.polynomials_manipulation import gf_poly_eval, gf_pow, gf_poly_scale, gf_poly_add, gf_inverse, gf_mul, \
     gf_div, gf_sub, gf_poly_mul
 import numpy as np
 

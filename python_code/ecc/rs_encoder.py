@@ -1,4 +1,4 @@
-from python_code.ecc.polynomial_utils import rs_generator_poly, gf_mul
+from python_code.ecc.polynomials_manipulation import rs_generator_poly, gf_mul
 import numpy as np
 
 

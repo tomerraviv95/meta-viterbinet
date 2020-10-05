@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from python_code.ecc.polynomial_utils import init_tables, convert_binary_to_field, convert_field_to_binary
+from python_code.ecc.polynomials_manipulation import init_tables, convert_binary_to_field, convert_field_to_binary
 from python_code.ecc.rs_decoder import rs_calc_syndromes, rs_find_error_locator, rs_find_errors, rs_correct_errata
 from python_code.ecc.rs_encoder import rs_encode_msg
 
