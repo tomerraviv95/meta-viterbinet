@@ -1,118 +1,6 @@
-### encoding code from site https://en.wikiversity.org/wiki/Reed%E2%80%93Solomon_codes_for_coders
-import random
-
-from python_code.utils.berlekamp_massey import BerlekampMasseyHardDecoder
+from python_code.ecc.polynomial_utils import gf_poly_eval, gf_pow, gf_poly_scale, gf_poly_add, gf_inverse, gf_mul, \
+    gf_div, gf_sub, gf_poly_mul
 import numpy as np
-import torch
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-UINT8 = 256
-
-
-def get_generator_poly():
-    gf_symbols = [1, 232, 29, 189, 50, 142, 246, 232, 15, 43, 82, 164, 238, 1, 158, 13, 119, 158, 224, 134, 227, 210,
-                  163, 50, 107, 40, 27, 104, 253, 24, 239, 216, 45]
-    # array_symbols = np.array(gf_symbols, dtype=np.uint8)
-    # unpacked_bits = np.unpackbits(array_symbols.reshape(-1, 1), axis=1)
-    # gf = unpacked_bits.flatten()[7:]
-    return gf_symbols
-
-
-def gf_mult_noLUT(x, y, prim=0, field_charac_full=256, carryless=True):
-    '''Galois Field integer multiplication using Russian Peasant Multiplication algorithm (faster than the standard multiplication + modular reduction).
-    If prim is 0 and carryless=False, then the function produces the result for a standard integers multiplication (no carry-less arithmetics nor modular reduction).'''
-    r = 0
-    while y:  # while y is above 0
-        if y & 1: r = r ^ x if carryless else r + x  # y is odd, then add the corresponding x to r (the sum of all x's corresponding to odd y's will give the final product). Note that since we're in GF(2), the addition is in fact an XOR (very important because in GF(2) the multiplication and additions are carry-less, thus it changes the result!).
-        y = y >> 1  # equivalent to y // 2
-        x = x << 1  # equivalent to x*2
-        if prim > 0 and x & field_charac_full: x = x ^ prim  # GF modulo: if x >= 256 then apply modular reduction using the primitive polynomial (we just subtract, but since the primitive number can be above 256 then we directly XOR).
-
-    return r
-
-
-def gf_poly_add(p, q):
-    r = [0] * max(len(p), len(q))
-    for i in range(0, len(p)):
-        r[i + len(r) - len(p)] = p[i]
-    for i in range(0, len(q)):
-        r[i + len(r) - len(q)] ^= q[i]
-    return r
-
-
-def gf_poly_mul(p, q):
-    '''Multiply two polynomials, inside Galois Field'''
-    # Pre-allocate the result array
-    r = [0] * (len(p) + len(q) - 1)
-    # Compute the polynomial multiplication (just like the outer product of two vectors,
-    # we multiply each coefficients of p with all coefficients of q)
-    for j in range(0, len(q)):
-        for i in range(0, len(p)):
-            r[i + j] ^= gf_mul(p[i], q[j])  # equivalent to: r[i + j] = gf_add(r[i+j], gf_mul(p[i], q[j]))
-            # -- you can see it's your usual polynomial multiplication
-    return r
-
-
-def gf_inverse(x):
-    return gf_exp[255 - gf_log[x]]  # gf_inverse(x) == gf_div(1, x)
-
-
-def gf_sub(x, y):
-    return x ^ y  # in binary galois field, subtraction is just the same as addition (since we mod 2)
-
-
-def gf_pow(x, power):
-    return gf_exp[(gf_log[x] * power) % 255]
-
-
-def gf_poly_eval(poly, x):
-    '''Evaluates a polynomial in GF(2^p) given the value for x. This is based on Horner's scheme for maximum efficiency.'''
-    y = poly[0]
-    for i in range(1, len(poly)):
-        y = gf_mul(y, x) ^ poly[i]
-    return y
-
-
-def gf_div(x, y):
-    if y == 0:
-        raise ZeroDivisionError()
-    if x == 0:
-        return 0
-    return gf_exp[(gf_log[x] + 255 - gf_log[y]) % 255]
-
-
-def init_tables(prim=0x11d):
-    global gf_exp, gf_log
-    gf_exp = [0] * 2 * UINT8  # Create list of 512 elements. In Python 2.6+, consider using bytearray
-    gf_log = [0] * UINT8
-    '''Precompute the logarithm and anti-log tables for faster computation later, using the provided primitive polynomial.'''
-    # prim is the primitive (binary) polynomial. Since it's a polynomial in the binary sense,
-    # it's only in fact a single galois field value between 0 and 255, and not a list of gf values.
-
-    gf_exp = [0] * 2 * UINT8  # anti-log (exponential) table
-    gf_log = [0] * UINT8  # log table
-    # For each possible value in the galois field 2^8, we will pre-compute the logarithm and anti-logarithm (exponential) of this value
-    x = 1
-    for i in range(0, UINT8 - 1):
-        gf_exp[i] = x  # compute anti-log for this value and store it in a table
-        gf_log[x] = i  # compute log at the same time
-        x = gf_mult_noLUT(x, 2, prim)
-
-        # If you use only generator==2 or a power of 2, you can use the following which is faster than gf_mult_noLUT():
-        # x <<= 1 # multiply by 2 (change 1 by another number y to multiply by a power of 2^y)
-        # if x & 0x100: # similar to x >= 256, but a lot faster (because 0x100 == 256)
-        # x ^= prim # substract the primary polynomial to the current value (instead of 255, so that we get a unique set made of coprime numbers), this is the core of the tables generation
-
-    # Optimization: double the size of the anti-log table so that we don't need to mod 255 to
-    # stay inside the bounds (because we will mainly use this table for the multiplication of two GF numbers, no more).
-    for i in range(UINT8 - 1, 2 * UINT8):
-        gf_exp[i] = gf_exp[i - (UINT8 - 1)]
-
-
-def gf_mul(x, y):
-    if x == 0 or y == 0:
-        return 0
-    return gf_exp[gf_log[x] + gf_log[y]]  # should be gf_exp[(gf_log[x]+gf_log[y])%255] if gf_exp wasn't oversized
 
 
 def gf_poly_div(dividend, divisor):
@@ -143,47 +31,6 @@ def gf_poly_div(dividend, divisor):
     return msg_out[:separator], msg_out[separator:]  # return quotient, remainder.
 
 
-def rs_generator_poly(nsym):
-    '''Generate an irreducible generator polynomial (necessary to encode a message into Reed-Solomon)'''
-    g = [1]
-    for i in range(0, nsym):
-        g = gf_poly_mul(g, [1, gf_pow(2, i)])
-    return g
-
-
-def rs_encode_msg(msg_in, nsym):
-    '''Reed-Solomon main encoding function, using polynomial division (algorithm Extended Synthetic Division)'''
-    msg_in = list(msg_in)
-    if (len(msg_in) + nsym) > 255: raise ValueError("Message is too long (%i when max is 255)" % (len(msg_in) + nsym))
-    gen = rs_generator_poly(nsym)
-    # Init msg_out with the values inside msg_in and pad with len(gen)-1 bytes (which is the number of ecc symbols).
-    msg_out = [0] * (len(msg_in) + len(gen) - 1)
-    # Initializing the Synthetic Division with the dividend (= input message polynomial)
-    msg_out[:len(msg_in)] = msg_in
-
-    # Synthetic division main loop
-    for i in range(len(msg_in)):
-        # Note that it's msg_out here, not msg_in. Thus, we reuse the updated value at each iteration
-        # (this is how Synthetic Division works: instead of storing in a temporary register the intermediate values,
-        # we directly commit them to the output).
-        coef = msg_out[i]
-
-        # log(0) is undefined, so we need to manually check for this case. There's no need to check
-        # the divisor here because we know it can't be 0 since we generated it.
-        if coef != 0:
-            # in synthetic division, we always skip the first coefficient of the divisior, because it's only used to normalize the dividend coefficient (which is here useless since the divisor, the generator polynomial, is always monic)
-            for j in range(1, len(gen)):
-                msg_out[i + j] ^= gf_mul(gen[j], coef)  # equivalent to msg_out[i+j] += gf_mul(gen[j], coef)
-
-    # At this point, the Extended Synthetic Divison is done, msg_out contains the quotient in msg_out[:len(msg_in)]
-    # and the remainder in msg_out[len(msg_in):]. Here for RS encoding, we don't need the quotient but only the remainder
-    # (which represents the RS code), so we can just overwrite the quotient with the input message, so that we get
-    # our complete codeword composed of the message + code.
-    msg_out[:len(msg_in)] = msg_in
-
-    return np.array(msg_out, dtype=np.uint8)
-
-
 def rs_calc_syndromes(msg, nsym):
     '''Given the received codeword msg and the number of error correcting symbols (nsym), computes the syndromes polynomial.
     Mathematically, it's essentially equivalent to a Fourrier Transform (Chien search being the inverse).
@@ -195,13 +42,6 @@ def rs_calc_syndromes(msg, nsym):
         synd[i] = gf_poly_eval(msg, gf_pow(2, i))
     return [0] + synd  #
     # pad with one 0 for mathematical precision (else we can end up with weird calculations sometimes)
-
-
-def gf_poly_scale(p, x):
-    r = [0] * len(p)
-    for i in range(0, len(p)):
-        r[i] = gf_mul(p[i], x)
-    return r
 
 
 def rs_find_errata_locator(e_pos):
@@ -358,7 +198,6 @@ def rs_find_error_locator(synd, nsym, erase_loc=None, erase_count=0):
     errs = len(err_loc) - 1
     # if (errs - erase_count) * 2 + erase_count > nsym:
     #     raise ValueError("Too many errors to correct")  # too many errors to correct
-
     return err_loc
 
 
@@ -374,42 +213,3 @@ def rs_find_errors(err_loc, nmess):  # nmess is len(msg_in)
             err_pos.append(nmess - 1 - i)
     # Sanity check: the number of errors/errata positions found should be exactly the same as the length of the errata locator polynomial
     return err_pos
-
-
-def convert_binary_to_field(array: np.ndarray):
-    return np.packbits(array.reshape(-1, 8), axis=1).astype(np.uint8).reshape(-1)
-
-
-def convert_field_to_binary(array: np.ndarray):
-    return np.unpackbits(array.reshape(-1, 1), axis=1).astype(int).reshape(-1)
-
-
-def encode(binary_word: np.ndarray):
-    init_tables()
-    symbols_word = convert_binary_to_field(binary_word)
-    symbols_codeword = rs_encode_msg(symbols_word, nsym=32)
-    return convert_field_to_binary(symbols_codeword)
-
-
-def decode(binary_rx):
-    init_tables()
-    symbols_rx = convert_binary_to_field(binary_rx.astype(int))
-    synd = rs_calc_syndromes(symbols_rx, nsym=32)
-    err_loc = rs_find_error_locator(synd, nsym=32)
-    pos = rs_find_errors(err_loc[::-1], len(symbols_rx))  # find the errors locations
-    corrected_word = rs_correct_errata(symbols_rx, synd, pos)
-    return convert_field_to_binary(corrected_word)[:1784]
-
-
-if __name__ == "__main__":
-    ## simple testing
-    words = np.random.randint(0, 2, [1784])
-    tx = encode(words)
-    errors = np.zeros(2040).astype(int)
-    errors_ind = np.array([0, 8, 16])  # np.sort(np.random.choice(2040, errors_num, replace=False))
-    errors[errors_ind] = 1
-    print(f'generated errors at locations: {errors_ind // 8}')
-    binary_rx = (tx + errors) % 2
-    corrected_word = decode(binary_rx)
-    flips_num = np.sum(np.abs(words - corrected_word))
-    print("flips from original word after decoding: " + str(flips_num))

@@ -4,7 +4,7 @@ from python_code.trainers.trainer import Trainer
 import numpy as np
 import torch
 
-from python_code.utils.rs_codes import decode
+from python_code.ecc.rs_main import decode
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

@@ -1,6 +1,4 @@
-import collections
 import concurrent.futures
-import itertools
 
 import numpy as np
 import torch
@@ -10,7 +8,7 @@ from typing import Tuple, List
 from python_code.channel.channel import ISIAWGNChannel, PoissonChannel
 from python_code.channel.channel_estimation import estimate_channel
 from python_code.channel.modulator import BPSKModulator, OnOffModulator
-from python_code.utils.rs_codes import rs_encode_msg, encode
+from python_code.ecc.rs_main import encode
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

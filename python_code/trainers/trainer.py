@@ -1,5 +1,4 @@
 from python_code.channel.channel_dataset import ChannelModelDataset
-from python_code.utils.berlekamp_massey import BerlekampMasseyHardDecoder
 from python_code.utils.early_stopping import EarlyStopping
 from python_code.utils.metrics import calculate_error_rates
 from dir_definitions import CONFIG_PATH, WEIGHTS_DIR
