@@ -8,7 +8,8 @@ import torch
 import os
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-SER_THRESH = 0.02
+SER_THRESH = 0.1
+SELF_SUPERVISED_ITERATIONS = 150
 
 
 class VNETTrainer(Trainer):
@@ -100,15 +101,19 @@ class VNETTrainer(Trainer):
                 detected_word = self.detector(received_word, 'val')
 
                 decoded_word = [decode(detected_word) for detected_word in detected_word.cpu().numpy()]
-                detected_word = torch.Tensor(decoded_word).to(device)
+                decoded_word = torch.Tensor(decoded_word).to(device)
 
-                ser, fer, err_indices = calculate_error_rates(detected_word, transmitted_word)
-                if ser < SER_THRESH:
-                    new_transmitted_word = encode(transmitted_word.cpu().numpy().astype(int)).reshape(1, -1)
-                    # run training loops
-                    for i in range(STEPS_NUM):
-                        self.run_train_loop(soft_estimation=self.detector(received_word, 'train'),
-                                            transmitted_words=torch.Tensor(new_transmitted_word).to(device))
+                ser, fer, err_indices = calculate_error_rates(decoded_word, transmitted_word)
+
+                # calculate soft values
+                soft_estimation = self.detector(received_word, 'train')
+                new_transmitted_word = encode(transmitted_word.cpu().numpy().astype(int)).reshape(1, -1)
+                new_transmitted_word = torch.Tensor(new_transmitted_word).to(device)
+
+                # run training loops
+                for i in range(SELF_SUPERVISED_ITERATIONS):
+                    self.run_train_loop(soft_estimation=soft_estimation,
+                                        transmitted_words=new_transmitted_word)
                 total_ser += ser
                 if (count + 1) % 10 == 0:
                     print(f'Self-supervised: {count + 1}/{transmitted_words.shape[0]}, SER {total_ser / (count + 1)}')

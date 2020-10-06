@@ -31,7 +31,7 @@ train_minibatch_size: 32
 train_SNR_start: 6
 train_SNR_end: 14
 train_SNR_step: 2
-lr: 0.001 # learning rate
+lr: 0.0001 # learning rate
 loss_type: 'CrossEntropy' # 'BCE','CrossEntropy','MSE'
 print_every_n_train_minibatches: 10
 optimizer_type: 'Adam' # 'Adam','RMSprop','SGD'

@@ -37,7 +37,13 @@ MARKERS_DICT = {'Viterbi, CSI uncertainty': 'x',
                 'Viterbi, Full CSI': '^',
                 'ViterbiNet, initial training': '>',
                 'ViterbiNet, composite training': 'o',
-                'ViterbiNet, online training': 's'}
+                'ViterbiNet, online training': 's',
+                'Viterbi, Initial CSI (paper)': 'x',
+                'Viterbi, Full CSI (paper)': '^',
+                'ViterbiNet, initial training (paper)': '>',
+                'ViterbiNet, composite training (paper)': 'o',
+                'ViterbiNet, online training (paper)': 's'
+                }
 COLORS_DICT = {'Viterbi, CSI uncertainty': 'black',
                'Viterbi, CSI uncertainty (paper)': 'black',
                'Viterbi, perfect CSI': 'blue',
@@ -50,7 +56,12 @@ COLORS_DICT = {'Viterbi, CSI uncertainty': 'black',
                'Viterbi, Full CSI': 'blue',
                'ViterbiNet, initial training': 'purple',
                'ViterbiNet, composite training': 'green',
-               'ViterbiNet, online training': 'r'
+               'ViterbiNet, online training': 'r',
+               'Viterbi, Initial CSI (paper)': 'black',
+               'Viterbi, Full CSI (paper)': 'blue',
+               'ViterbiNet, initial training (paper)': 'purple',
+               'ViterbiNet, composite training (paper)': 'green',
+               'ViterbiNet, online training (paper)': 'r',
                }
 LINESTYLES_DICT = {'Viterbi, CSI uncertainty': 'solid',
                    'Viterbi, perfect CSI': 'solid',
@@ -64,7 +75,13 @@ LINESTYLES_DICT = {'Viterbi, CSI uncertainty': 'solid',
                    'Viterbi, CSI uncertainty (paper)': 'dotted',
                    'Viterbi, perfect CSI (paper)': 'dotted',
                    'ViterbiNet, CSI uncertainty (paper)': 'dotted',
-                   'ViterbiNet, perfect CSI (paper)': 'dotted'}
+                   'ViterbiNet, perfect CSI (paper)': 'dotted',
+                   'Viterbi, Initial CSI (paper)': 'dotted',
+                   'Viterbi, Full CSI (paper)': 'dotted',
+                   'ViterbiNet, initial training (paper)': 'dotted',
+                   'ViterbiNet, composite training (paper)': 'dotted',
+                   'ViterbiNet, online training (paper)': 'dotted',
+                   }
 
 
 def get_ser_plot(dec: Trainer, run_over: bool, method_name: str):
@@ -210,6 +227,36 @@ def add_viterbinet_self_supervised(all_curves):
     all_curves.append((dec.snr_range['val'], ser, 'ViterbiNet, online training'))
 
 
+def add_viterbi_initial_csi_paper(all_curves):
+    snr_range = np.arange(6, 14.1, 2)
+    ser_paper = [0.11, 0.08, 0.048, 0.03, 0.02]
+    all_curves.append((snr_range, ser_paper, 'Viterbi, Initial CSI (paper)'))
+
+
+def add_viterbi_full_csi_paper(all_curves):
+    snr_range = np.arange(6, 12.1, 2)
+    ser_paper = [0.07, 0.026, 0.0065, 1.8e-4]
+    all_curves.append((snr_range, ser_paper, 'Viterbi, Full CSI (paper)'))
+
+
+def add_viterbinet_initial_paper(all_curves):
+    snr_range = np.arange(6, 14.1, 2)
+    ser_paper = [0.11, 0.085, 0.048, 0.033, 0.024]
+    all_curves.append((snr_range, ser_paper, 'ViterbiNet, initial training (paper)'))
+
+
+def add_viterbinet_composite_paper(all_curves):
+    snr_range = np.arange(6, 14.1, 2)
+    ser_paper = [0.08, 0.05, 0.028, 0.011, 0.005]
+    all_curves.append((snr_range, ser_paper, 'ViterbiNet, composite training (paper)'))
+
+
+def add_viterbinet_self_supervised_paper(all_curves):
+    snr_range = np.arange(6, 12.1, 2)
+    ser_paper = [0.11, 0.06, 0.038, 0.00045]
+    all_curves.append((snr_range, ser_paper, 'ViterbiNet, online training (paper)'))
+
+
 def get_figure_six_curves(all_curves):
     # Viterbi - noisy estimate of CSI
     add_noisy_viterbi(all_curves)
@@ -236,13 +283,18 @@ if __name__ == '__main__':
     # get_figure_six_curves(all_curves)
 
     add_viterbi_initial_csi(all_curves)
+    add_viterbi_initial_csi_paper(all_curves)
 
     add_viterbi_full_csi(all_curves)
+    add_viterbi_full_csi_paper(all_curves)
 
     add_viterbinet_initial(all_curves)
+    add_viterbinet_initial_paper(all_curves)
 
     add_viterbinet_composite(all_curves)
+    add_viterbinet_composite_paper(all_curves)
 
-    # add_viterbinet_self_supervised(all_curves)
+    add_viterbinet_self_supervised(all_curves)
+    add_viterbinet_self_supervised_paper(all_curves)
 
     plot_all_curves(all_curves)
