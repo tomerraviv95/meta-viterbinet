@@ -24,7 +24,6 @@ class Trainer(object):
         self.run_name = None
 
         # code parameters
-
         self.channel_blocks = None
         self.use_ecc = None
 
@@ -59,6 +58,7 @@ class Trainer(object):
         self.print_every_n_train_minibatches = None
         self.optimizer_type = None
         self.early_stopping_mode = None
+        self.self_supervised = None
 
         # seed
         self.noise_seed = None
@@ -151,7 +151,7 @@ class Trainer(object):
         else:
             raise NotImplementedError("No such optimizer implemented!!!")
         if self.early_stopping_mode == 'on':
-            self.es = EarlyStopping(patience=10)
+            self.es = EarlyStopping(patience=4)
         else:
             self.es = None
         if self.loss_type == 'BCE':
@@ -222,12 +222,11 @@ class Trainer(object):
         :return: ber, fer, iterations vectors
         """
         ser_total = np.zeros(len(self.snr_range['val']))
-        with torch.no_grad():
-            for gamma_count, gamma in enumerate(self.gamma_range):
-                print(f'Starts evaluation at gamma {gamma}')
-                start = time()
-                ser_total += self.gamma_eval(gamma)
-                print(f'Done. time: {time() - start}, ser: {ser_total / (gamma_count + 1)}')
+        for gamma_count, gamma in enumerate(self.gamma_range):
+            print(f'Starts evaluation at gamma {gamma}')
+            start = time()
+            ser_total += self.gamma_eval(gamma)
+            print(f'Done. time: {time() - start}, ser: {ser_total / (gamma_count + 1)}')
         ser_total /= self.gamma_num
         return ser_total
 
@@ -248,27 +247,15 @@ class Trainer(object):
                 best_ser = math.inf
 
                 for minibatch in range(1, self.train_minibatch_num + 1):
-
                     # draw words
                     transmitted_words, received_words = self.channel_dataset['train'].__getitem__(snr_list=[snr],
                                                                                                   gamma=gamma)
                     # pass through detector
                     soft_estimation = self.detector(received_words, 'train')
 
-                    # run training loop
+                    # run training loops
                     for i in range(STEPS_NUM):
-                        # calculate loss
-                        loss = self.calc_loss(soft_estimation=soft_estimation, transmitted_words=transmitted_words)
-                        # if loss is Nan inform the user
-                        if torch.sum(torch.isnan(loss)):
-                            print('Nan value')
-                        current_loss = loss.item()
-                        # back propagation
-                        for param in self.detector.parameters():
-                            param.grad = None
-                        # self.optimizer.zero_grad()
-                        loss.backward(retain_graph=True)
-                        self.optimizer.step()
+                        current_loss = self.run_train_loop(soft_estimation, transmitted_words)
 
                     if minibatch % self.print_every_n_train_minibatches == 0:
                         # evaluate performance
@@ -283,6 +270,21 @@ class Trainer(object):
 
                 print(f'best ser - {best_ser}')
                 print('*' * 50)
+
+    def run_train_loop(self, soft_estimation, transmitted_words):
+        # calculate loss
+        loss = self.calc_loss(soft_estimation=soft_estimation, transmitted_words=transmitted_words)
+        # if loss is Nan inform the user
+        if torch.sum(torch.isnan(loss)):
+            print('Nan value')
+        current_loss = loss.item()
+        # back propagation
+        for param in self.detector.parameters():
+            param.grad = None
+        # self.optimizer.zero_grad()
+        loss.backward(retain_graph=True)
+        self.optimizer.step()
+        return current_loss
 
     def save_weights(self, current_loss: float, snr: float, gamma: float):
         torch.save({'model_state_dict': self.detector.state_dict(),

@@ -1,5 +1,5 @@
 # general
-run_name: 'test'
+run_name: 'self_supervised_viterbinet'
 
 # coding parameters
 channel_blocks: 10
@@ -19,15 +19,15 @@ gamma_num: 1
 
 # validation hyperparameters
 val_block_length: 1784
-val_SNR_start: 6
-val_SNR_end: 14
+val_SNR_start: 12
+val_SNR_end: 12
 val_SNR_step: 2
 val_words: 200
 
 # train hyperparameters
 train_block_length: 5000
 train_minibatch_num: 100
-train_minibatch_size: 16
+train_minibatch_size: 32
 train_SNR_start: 6
 train_SNR_end: 14
 train_SNR_step: 2
@@ -36,6 +36,7 @@ loss_type: 'CrossEntropy' # 'BCE','CrossEntropy','MSE'
 print_every_n_train_minibatches: 10
 optimizer_type: 'Adam' # 'Adam','RMSprop','SGD'
 early_stopping_mode: 'on' # 'on', 'off'
+self_supervised: True
 
 # seed
 noise_seed: 345000

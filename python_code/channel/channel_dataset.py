@@ -78,7 +78,7 @@ class ChannelModelDataset(Dataset):
                     block_end = (channel_block + 1) * block_length
                     ## composite training if fading_in_decoder is True, else regular
                     h = estimate_channel(self.memory_length, gamma, noisy_est_var=self.noisy_est_var,
-                                         fading=self.fading_in_decoder, index=3 * channel_block - 1)
+                                         fading=self.fading_in_decoder, index=3 * channel_block + 2)
                     y[:, block_start: block_end] = self.transmit(
                         padded_c[:, block_start: block_end + self.memory_length], h,
                         snr)

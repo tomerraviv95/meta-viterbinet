@@ -1,12 +1,14 @@
 from python_code.detectors.VNET.vnet_detector import VNETDetector
+from python_code.ecc.rs_main import decode, encode
 from python_code.utils.metrics import calculate_error_rates
 from python_code.utils.trellis_utils import calculate_states
-from python_code.trainers.trainer import Trainer
+from python_code.trainers.trainer import Trainer, STEPS_NUM
 import numpy as np
 import torch
 import os
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+SER_THRESH = 0.02
 
 
 class VNETTrainer(Trainer):
@@ -83,8 +85,42 @@ class VNETTrainer(Trainer):
         loss = self.criterion(input=input_batch, target=gt_states_batch)
         return loss
 
+    def single_eval(self, snr, gamma):
+        # eval with training
+        if self.self_supervised is True:
+            self.deep_learning_setup()
+            # draw words of given gamma for all snrs
+            transmitted_words, received_words = self.channel_dataset['val'].__getitem__(snr_list=[snr], gamma=gamma)
+
+            # self-supervised loop
+            total_ser = 0
+            for count, (transmitted_word, received_word) in enumerate(zip(transmitted_words, received_words)):
+                transmitted_word, received_word = transmitted_word.reshape(1, -1), received_word.reshape(1, -1)
+                # decode and calculate accuracy
+                detected_word = self.detector(received_word, 'val')
+
+                decoded_word = [decode(detected_word) for detected_word in detected_word.cpu().numpy()]
+                detected_word = torch.Tensor(decoded_word).to(device)
+
+                ser, fer, err_indices = calculate_error_rates(detected_word, transmitted_word)
+                if ser < SER_THRESH:
+                    new_transmitted_word = encode(transmitted_word.cpu().numpy().astype(int)).reshape(1, -1)
+                    # run training loops
+                    for i in range(STEPS_NUM):
+                        self.run_train_loop(soft_estimation=self.detector(received_word, 'train'),
+                                            transmitted_words=torch.Tensor(new_transmitted_word).to(device))
+                total_ser += ser
+                if (count + 1) % 10 == 0:
+                    print(f'Self-supervised: {count + 1}/{transmitted_words.shape[0]}, SER {total_ser / (count + 1)}')
+            total_ser /= transmitted_words.shape[0]
+            print(total_ser)
+            return total_ser
+        else:
+            # a normal evaluation, return evaluation of parent class
+            return super().single_eval(snr, gamma)
+
 
 if __name__ == '__main__':
     dec = VNETTrainer()
-    dec.train()
-    # dec.evaluate()
+    # dec.train()
+    dec.evaluate()
