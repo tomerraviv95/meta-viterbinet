@@ -8,8 +8,8 @@ import torch
 import os
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-SER_THRESH = 0.1
-SELF_SUPERVISED_ITERATIONS = 150
+SER_THRESH = 0.05
+SELF_SUPERVISED_ITERATIONS = 100
 
 
 class VNETTrainer(Trainer):
@@ -90,11 +90,18 @@ class VNETTrainer(Trainer):
         # eval with training
         if self.self_supervised is True:
             self.deep_learning_setup()
+            # CLIP = 1e-8
+            # for p in self.detector.parameters():
+            #     p.register_hook(lambda grad: torch.clamp(grad, -CLIP, CLIP))
+
             # draw words of given gamma for all snrs
             transmitted_words, received_words = self.channel_dataset['val'].__getitem__(snr_list=[snr], gamma=gamma)
 
+            # transmitted_words, received_words = transmitted_words[13:], received_words[13:]
+
             # self-supervised loop
             total_ser = 0
+            prev = None
             for count, (transmitted_word, received_word) in enumerate(zip(transmitted_words, received_words)):
                 transmitted_word, received_word = transmitted_word.reshape(1, -1), received_word.reshape(1, -1)
                 # decode and calculate accuracy
@@ -104,17 +111,19 @@ class VNETTrainer(Trainer):
                 decoded_word = torch.Tensor(decoded_word).to(device)
 
                 ser, fer, err_indices = calculate_error_rates(decoded_word, transmitted_word)
+                encoded_word = torch.Tensor(encode(decoded_word.int().cpu().numpy()).reshape(1, -1)).to(device)
+                print('*' * 20)
+                print(torch.sum(torch.abs(encoded_word - detected_word)))
+                if ser <= SER_THRESH:
+                    # calculate soft values
+                    soft_estimation = self.detector(received_word, 'train')
 
-                # calculate soft values
-                soft_estimation = self.detector(received_word, 'train')
-                new_transmitted_word = encode(transmitted_word.cpu().numpy().astype(int)).reshape(1, -1)
-                new_transmitted_word = torch.Tensor(new_transmitted_word).to(device)
-
-                # run training loops
-                for i in range(SELF_SUPERVISED_ITERATIONS):
-                    self.run_train_loop(soft_estimation=soft_estimation,
-                                        transmitted_words=new_transmitted_word)
+                    # run training loops
+                    for i in range(SELF_SUPERVISED_ITERATIONS):
+                        self.run_train_loop(soft_estimation=soft_estimation, transmitted_words=encoded_word)
+                print(ser)
                 total_ser += ser
+                prev = encoded_word
                 if (count + 1) % 10 == 0:
                     print(f'Self-supervised: {count + 1}/{transmitted_words.shape[0]}, SER {total_ser / (count + 1)}')
             total_ser /= transmitted_words.shape[0]

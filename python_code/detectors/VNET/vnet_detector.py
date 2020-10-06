@@ -19,7 +19,6 @@ class VNETDetector(nn.Module):
                  transmission_lengths: Dict[str, int]):
 
         super(VNETDetector, self).__init__()
-        self.start_state = 0
         self.transmission_lengths = transmission_lengths
         self.n_states = n_states
         self.transition_table_array = create_transition_table(n_states)

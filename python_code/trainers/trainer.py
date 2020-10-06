@@ -278,10 +278,10 @@ class Trainer(object):
         if torch.sum(torch.isnan(loss)):
             print('Nan value')
         current_loss = loss.item()
+        # print([param.grad for param in self.detector.parameters()])
         # back propagation
         for param in self.detector.parameters():
             param.grad = None
-        # self.optimizer.zero_grad()
         loss.backward(retain_graph=True)
         self.optimizer.step()
         return current_loss

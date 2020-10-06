@@ -30,7 +30,7 @@ class ISIAWGNChannel:
 
         w = (snr_value ** (-0.5)) * random.normal(0, W_SIGMA, (row, col))
 
-        y = conv + w
+        y = conv # + w
 
         return y
 

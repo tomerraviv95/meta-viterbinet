@@ -22,23 +22,23 @@ val_block_length: 1784
 val_SNR_start: 12
 val_SNR_end: 12
 val_SNR_step: 2
-val_words: 200
+val_words: 50
 
 # train hyperparameters
 train_block_length: 5000
 train_minibatch_num: 100
-train_minibatch_size: 32
+train_minibatch_size: 256
 train_SNR_start: 6
 train_SNR_end: 14
 train_SNR_step: 2
-lr: 0.0001 # learning rate
+lr: 0.0002 # learning rate
 loss_type: 'CrossEntropy' # 'BCE','CrossEntropy','MSE'
 print_every_n_train_minibatches: 10
-optimizer_type: 'Adam' # 'Adam','RMSprop','SGD'
+optimizer_type: 'SGD' # 'Adam','RMSprop','SGD'
 early_stopping_mode: 'on' # 'on', 'off'
 self_supervised: True
 
 # seed
-noise_seed: 345000
-word_seed: 786000
+noise_seed: 34500012
+word_seed: 78600012
 

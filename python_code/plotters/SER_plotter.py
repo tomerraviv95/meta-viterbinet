@@ -192,7 +192,7 @@ def add_viterbi_initial_csi(all_curves):
 
 
 def add_viterbi_full_csi(all_curves):
-    dec = VATrainer(val_SNR_start=6, val_SNR_end=14, val_SNR_step=2, noisy_est_var=0,
+    dec = VATrainer(val_SNR_start=6, val_SNR_end=12, val_SNR_step=2, noisy_est_var=0,
                     fading_in_channel=True, fading_in_decoder=True, use_ecc=True, val_block_length=1784,
                     gamma_start=0.2, gamma_end=0.2, gamma_num=1, channel_type='ISI_AWGN')
     ser = get_ser_plot(dec, run_over=run_over, method_name='Viterbi, Full CSI')
