@@ -39,6 +39,6 @@ early_stopping_mode: 'on' # 'on', 'off'
 self_supervised: True
 
 # seed
-noise_seed: 345000
-word_seed: 786000
+noise_seed: 3450001
+word_seed: 7860001
 

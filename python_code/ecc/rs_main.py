@@ -32,7 +32,7 @@ def decode(binary_rx: np.ndarray):
     pos = rs_find_errors(err_loc[::-1], len(symbols_rx))  # find the errors locations
     try:
         corrected_word = rs_correct_errata(symbols_rx, synd, pos)[:-32]
-    except ValueError:
+    except Exception:
         corrected_word = symbols_rx[:-32]
     return convert_field_to_binary(corrected_word)
 
