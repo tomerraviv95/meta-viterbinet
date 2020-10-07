@@ -15,7 +15,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class ChannelModelDataset(Dataset):
     """
-    Dataset object for the channel. Used in training and evaluation to draw minibatches of channel words.
+    Dataset object for the channel. Used in training and evaluation to draw minibatches of channel words and transmitted
     """
 
     def __init__(self, channel_type: str,

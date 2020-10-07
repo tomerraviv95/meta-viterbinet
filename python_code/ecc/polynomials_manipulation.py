@@ -1,3 +1,5 @@
+### code from site https://en.wikiversity.org/wiki/Reed%E2%80%93Solomon_codes_for_coders
+
 import numpy as np
 
 UINT8 = 256

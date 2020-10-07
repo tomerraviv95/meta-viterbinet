@@ -39,21 +39,20 @@ class VADetector(nn.Module):
         self.transition_table_array = create_transition_table(n_states)
         self.transition_table = torch.Tensor(self.transition_table_array).to(device)
 
-    def compute_state_priors(self, h: np.ndarray):
-        all_states = np.unpackbits(np.arange(self.n_states).astype(np.uint8).reshape(-1, 1), axis=1).astype(int)
+    def compute_state_priors(self, h: np.ndarray) -> torch.Tensor:
+        all_states_decimal = np.arange(self.n_states).astype(np.uint8).reshape(-1, 1)
+        all_states_binary = np.unpackbits(all_states_decimal, axis=1).astype(int)
         if self.channel_type == 'ISI_AWGN':
-            # modulation
-            all_states_symbols = BPSKModulator.modulate(all_states[:, -self.memory_length:])
+            all_states_symbols = BPSKModulator.modulate(all_states_binary[:, -self.memory_length:])
         elif self.channel_type == 'Poisson':
-            # modulation
-            all_states_symbols = OnOffModulator.modulate(all_states[:, -self.memory_length:])
+            all_states_symbols = OnOffModulator.modulate(all_states_binary[:, -self.memory_length:])
         else:
             raise Exception('No such channel defined!!!')
         state_priors = np.dot(all_states_symbols, h.T)
         return torch.Tensor(state_priors).to(device)
 
-    def compute_likelihood_priors(self, gamma, y):
-        # channel_estimate
+    def compute_likelihood_priors(self, gamma: float, y: torch.Tensor):
+        # estimate channel per word (only changes between the h's if fading is True)
         h = np.concatenate([estimate_channel(self.memory_length, gamma, noisy_est_var=self.noisy_est_var,
                                              fading=self.fading, index=index) for index in range(self.val_words)],
                            axis=0)
@@ -69,6 +68,9 @@ class VADetector(nn.Module):
         """
         The forward pass of the Viterbi algorithm
         :param y: input values (batch)
+        :param phase: 'train' or 'val'
+        :param gamma: channel coefficient
+        :returns tensor of detected word, same shape as y
         """
         # initialize input probabilities
         in_prob = torch.zeros([y.shape[0], self.n_states]).to(device)

@@ -1,4 +1,7 @@
-from python_code.ecc.polynomials_manipulation import gf_poly_eval, gf_pow, gf_poly_scale, gf_poly_add, gf_inverse, gf_mul, \
+### code from site https://en.wikiversity.org/wiki/Reed%E2%80%93Solomon_codes_for_coders
+
+from python_code.ecc.polynomials_manipulation import gf_poly_eval, gf_pow, gf_poly_scale, gf_poly_add, gf_inverse, \
+    gf_mul, \
     gf_div, gf_sub, gf_poly_mul
 import numpy as np
 

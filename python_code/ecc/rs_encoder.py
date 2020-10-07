@@ -1,3 +1,5 @@
+### code from site https://en.wikiversity.org/wiki/Reed%E2%80%93Solomon_codes_for_coders
+
 from python_code.ecc.polynomials_manipulation import rs_generator_poly, gf_mul
 import numpy as np
 

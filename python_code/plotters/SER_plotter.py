@@ -86,16 +86,18 @@ LINESTYLES_DICT = {'Viterbi, CSI uncertainty': 'solid',
 
 def get_ser_plot(dec: Trainer, run_over: bool, method_name: str):
     print(method_name)
-    # set the path to saved or needed-loading pkl file
+    # set the path to saved plot results for a single method (so we do not need to run anew each time)
     if not os.path.exists(PLOTS_DIR):
         os.makedirs(PLOTS_DIR)
     file_name = '_'.join([method_name, str(dec.channel_type)])
     plots_path = os.path.join(PLOTS_DIR, file_name + '.pkl')
 
+    # if plot already exists, and the run_over flag is false - load the saved plot
     if os.path.isfile(plots_path) and not run_over:
         print("Loading plots")
         ser_total = load_pkl(plots_path)
     else:
+        # otherwise - run again
         print("calculating fresh")
         ser_total = dec.evaluate()
         save_pkl(plots_path, ser_total)
@@ -104,6 +106,7 @@ def get_ser_plot(dec: Trainer, run_over: bool, method_name: str):
 
 
 def plot_all_curves(all_curves: List[Tuple[np.ndarray, np.ndarray, str]]):
+    # path for the saved figure
     current_day_time = datetime.datetime.now()
     folder_name = f'{current_day_time.month}-{current_day_time.day}-{current_day_time.hour}-{current_day_time.minute}'
     if not os.path.isdir(os.path.join(FIGURES_DIR, folder_name)):
@@ -112,6 +115,7 @@ def plot_all_curves(all_curves: List[Tuple[np.ndarray, np.ndarray, str]]):
     plt.figure()
     min_snr = math.inf
     max_snr = -math.inf
+    # iterate all curves, plot each one
     for snr_range, ber, method_name in all_curves:
         plt.plot(snr_range, ber, label=method_name, marker=MARKERS_DICT[method_name], color=COLORS_DICT[method_name],
                  linestyle=LINESTYLES_DICT[method_name], linewidth=2.2, markersize=12)
@@ -125,7 +129,6 @@ def plot_all_curves(all_curves: List[Tuple[np.ndarray, np.ndarray, str]]):
     plt.xlim([min_snr - 0.1, max_snr + 0.1])
     plt.legend(loc='lower left', prop={'size': 15})
     plt.savefig(os.path.join(FIGURES_DIR, folder_name, 'SER.png'), bbox_inches='tight')
-
     plt.show()
 
 
@@ -276,12 +279,7 @@ def get_figure_six_curves(all_curves):
     add_viterbinet_paper(all_curves)
 
 
-if __name__ == '__main__':
-    run_over = False
-    all_curves = []
-
-    # get_figure_six_curves(all_curves)
-
+def get_figure_thirteen_curves(all_curves):
     add_viterbi_initial_csi(all_curves)
     add_viterbi_initial_csi_paper(all_curves)
 
@@ -296,5 +294,14 @@ if __name__ == '__main__':
 
     add_viterbinet_self_supervised(all_curves)
     add_viterbinet_self_supervised_paper(all_curves)
+
+
+if __name__ == '__main__':
+    run_over = False
+    all_curves = []
+
+    # get_figure_six_curves(all_curves)
+
+    get_figure_thirteen_curves(all_curves)
 
     plot_all_curves(all_curves)
