@@ -1,5 +1,5 @@
 # general
-run_name: 'self_supervised_viterbinet'
+run_name: 'neww'
 
 # coding parameters
 channel_blocks: 10
@@ -22,19 +22,19 @@ val_block_length: 1784
 val_SNR_start: 12
 val_SNR_end: 12
 val_SNR_step: 2
-val_words: 50
+val_words: 200
 
 # train hyperparameters
 train_block_length: 5000
 train_minibatch_num: 100
-train_minibatch_size: 256
-train_SNR_start: 6
-train_SNR_end: 14
+train_minibatch_size: 100
+train_SNR_start: 12
+train_SNR_end: 12
 train_SNR_step: 2
-lr: 0.0002 # learning rate
+lr: 0.0006 # learning rate
 loss_type: 'CrossEntropy' # 'BCE','CrossEntropy','MSE'
 print_every_n_train_minibatches: 10
-optimizer_type: 'SGD' # 'Adam','RMSprop','SGD'
+optimizer_type: 'Adam' # 'Adam','RMSprop','SGD'
 early_stopping_mode: 'on' # 'on', 'off'
 self_supervised: True
 

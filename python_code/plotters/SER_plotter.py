@@ -222,7 +222,7 @@ def add_viterbinet_self_supervised(all_curves):
                       noisy_est_var=0, fading_in_channel=True, fading_in_decoder=False, use_ecc=True,
                       self_supervised=True, val_words=200,
                       gamma_start=0.2, gamma_end=0.2, gamma_num=1, channel_type='ISI_AWGN',
-                      weights_dir=os.path.join(WEIGHTS_DIR, 'self_supervised_viterbinet'))
+                      weights_dir=os.path.join(WEIGHTS_DIR, 'neww'))
     ser = get_ser_plot(dec, run_over=run_over, method_name='ViterbiNet, online training')
     all_curves.append((dec.snr_range['val'], ser, 'ViterbiNet, online training'))
 

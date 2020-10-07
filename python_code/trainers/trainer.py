@@ -250,11 +250,10 @@ class Trainer(object):
                     # draw words
                     transmitted_words, received_words = self.channel_dataset['train'].__getitem__(snr_list=[snr],
                                                                                                   gamma=gamma)
-                    # pass through detector
-                    soft_estimation = self.detector(received_words, 'train')
-
                     # run training loops
                     for i in range(STEPS_NUM):
+                        # pass through detector
+                        soft_estimation = self.detector(received_words, 'train')
                         current_loss = self.run_train_loop(soft_estimation, transmitted_words)
 
                     if minibatch % self.print_every_n_train_minibatches == 0:
@@ -282,7 +281,7 @@ class Trainer(object):
         # back propagation
         for param in self.detector.parameters():
             param.grad = None
-        loss.backward(retain_graph=True)
+        loss.backward()
         self.optimizer.step()
         return current_loss
 
