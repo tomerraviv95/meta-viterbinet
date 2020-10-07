@@ -1,3 +1,4 @@
+from typing import Tuple
 from python_code.detectors.VNET.vnet_detector import VNETDetector
 from python_code.ecc.rs_main import decode, encode
 from python_code.utils.metrics import calculate_error_rates
@@ -9,12 +10,12 @@ import os
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 SER_THRESH = 0.02
-SELF_SUPERVISED_ITERATIONS = 2500
+SELF_SUPERVISED_ITERATIONS = 500
 
 
 class VNETTrainer(Trainer):
     """
-    Trainer for the VNET model.
+    Trainer for the ViterbiNet model.
     """
 
     def __init__(self, config_path=None, **kwargs):
@@ -30,14 +31,14 @@ class VNETTrainer(Trainer):
 
     def initialize_detector(self):
         """
-        Loads the VNET detector
+        Loads the ViterbiNet detector
         """
         self.detector = VNETDetector(n_states=self.n_states,
                                      transmission_lengths=self.transmission_lengths)
 
     def load_weights(self, snr: float, gamma: float):
         """
-        Loads detector's weights from checkpoint, if exists
+        Loads detector's weights defined by the [snr,gamma] from checkpoint, if exists
         """
         if os.path.join(self.weights_dir, f'snr_{snr}_gamma_{gamma}.pt'):
             print(f'loading model from snr {snr} and gamma {gamma}')
@@ -51,9 +52,8 @@ class VNETTrainer(Trainer):
 
     def gamma_eval(self, gamma: float) -> np.ndarray:
         """
-        Evaluation at a single snr.
-        :param snr: indice of snr in the snrs vector
-        :return: ser for batch
+        Evaluation at a single gamma value.
+        :return: ser for batch.
         """
         ser_total = np.zeros(len(self.snr_range['val']))
 
@@ -63,12 +63,13 @@ class VNETTrainer(Trainer):
 
         return ser_total
 
-    def select_batch(self, gt_states: torch.LongTensor, soft_estimation: torch.Tensor):
+    def select_batch(self, gt_states: torch.LongTensor, soft_estimation: torch.Tensor) -> Tuple[
+        torch.LongTensor, torch.Tensor]:
         """
-        Select a batch from the input and output label
-        :param gt_states:
-        :param soft_estimation:
-        :return:
+        Select a batch from the input and gt labels
+        :param gt_states: training labels, an int from the range of [0,1,...,n_states-1]
+        :param soft_estimation: the soft approximation, distribution over states (per word)
+        :return: selected batch from the entire "epoch", contains both labels and the NN soft approximation
         """
         rand_ind = torch.multinomial(torch.arange(gt_states.shape[0]).float(),
                                      self.train_minibatch_size).long().to(device)
@@ -86,61 +87,51 @@ class VNETTrainer(Trainer):
         loss = self.criterion(input=input_batch, target=gt_states_batch)
         return loss
 
-    def single_eval(self, snr, gamma):
+    def single_eval(self, snr: float, gamma: float) -> float:
+        """
+        ViterbiNet single eval - either a normal evaluation or on-the-fly online training
+        """
         # eval with training
         if self.self_supervised is True:
             self.deep_learning_setup()
-            # CLIP = 1e-10
-            # for p in self.detector.parameters():
-            #     p.register_hook(lambda grad: torch.clamp(grad, -CLIP, CLIP))
 
             # draw words of given gamma for all snrs
             transmitted_words, received_words = self.channel_dataset['val'].__getitem__(snr_list=[snr], gamma=gamma)
-            transmitted_words, received_words = transmitted_words[118:], received_words[118:]
             # self-supervised loop
             total_ser = 0
-            prev_rx, prev_enc = None, None
             for count, (transmitted_word, received_word) in enumerate(zip(transmitted_words, received_words)):
                 transmitted_word, received_word = transmitted_word.reshape(1, -1), received_word.reshape(1, -1)
-                # decode and calculate accuracy
+
+                # detect
                 detected_word = self.detector(received_word, 'val')
 
+                # decode
                 decoded_word = [decode(detected_word) for detected_word in detected_word.cpu().numpy()]
                 decoded_word = torch.Tensor(decoded_word).to(device)
 
+                # calculate accuracy
                 ser, fer, err_indices = calculate_error_rates(decoded_word, transmitted_word)
-                encoded_word = torch.Tensor(encode(decoded_word.int().cpu().numpy()).reshape(1, -1)).to(device)
+
+                # encode word again
+                decoded_word_array = decoded_word.int().cpu().numpy()
+                encoded_word = torch.Tensor(encode(decoded_word_array).reshape(1, -1)).to(device)
                 errors_num = torch.sum(torch.abs(encoded_word - detected_word)).item()
                 print('*' * 20)
-                print(count, ser, errors_num)
-
-                if ser > 0 and count > 0:
-                    print('fixing')
-                    for j in range(5):
-                        for i in range(100):
-                            # calculate soft values
-                            soft_estimation = self.detector(prev_rx, 'train')
-                            self.run_train_loop(soft_estimation=soft_estimation, transmitted_words=prev_enc)
-                        new_ser = calculate_error_rates(torch.Tensor([decode(detected_word) for detected_word in
-                                                                      self.detector(received_word,
-                                                                                    'val').cpu().numpy()]).to(device),
-                                                        transmitted_word)[0]
-                        print(f'new ser after {(j + 1) * 100} improvement: {new_ser}')
+                print(f'current: {count, ser, errors_num}')
 
                 if ser <= SER_THRESH:
                     # run training loops
                     for i in range(SELF_SUPERVISED_ITERATIONS):
                         # calculate soft values
                         soft_estimation = self.detector(received_word, 'train')
-                        self.run_train_loop(soft_estimation=soft_estimation, transmitted_words=encoded_word)
+                        labels = detected_word if ser > 0 else encoded_word
+                        self.run_train_loop(soft_estimation=soft_estimation, transmitted_words=labels)
 
                 total_ser += ser
-                prev_rx = received_word
-                prev_enc = encoded_word
                 if (count + 1) % 10 == 0:
                     print(f'Self-supervised: {count + 1}/{transmitted_words.shape[0]}, SER {total_ser / (count + 1)}')
             total_ser /= transmitted_words.shape[0]
-            print(total_ser)
+            print(f'Final ser: {total_ser}')
             return total_ser
         else:
             # a normal evaluation, return evaluation of parent class

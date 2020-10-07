@@ -196,8 +196,8 @@ def rs_find_error_locator(synd, nsym, erase_loc=None, erase_count=0):
     # Check if the result is correct, that there's not too many errors to correct
     while len(err_loc) and err_loc[0] == 0: del err_loc[0]  # drop leading 0s, else errs will not be of the correct size
     errs = len(err_loc) - 1
-    # if (errs - erase_count) * 2 + erase_count > nsym:
-    #     raise ValueError("Too many errors to correct")  # too many errors to correct
+    if (errs - erase_count) * 2 + erase_count > nsym:
+        raise ValueError("Too many errors to correct")  # too many errors to correct
     return err_loc
 
 
