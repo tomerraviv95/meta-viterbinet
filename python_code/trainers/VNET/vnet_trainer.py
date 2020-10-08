@@ -93,52 +93,54 @@ class VNETTrainer(Trainer):
         """
         # eval with training
         if self.self_supervised is True:
-            self.deep_learning_setup()
-
-            # draw words of given gamma for all snrs
-            transmitted_words, received_words = self.channel_dataset['val'].__getitem__(snr_list=[snr], gamma=gamma)
-            # self-supervised loop
-            total_ser = 0
-            for count, (transmitted_word, received_word) in enumerate(zip(transmitted_words, received_words)):
-                transmitted_word, received_word = transmitted_word.reshape(1, -1), received_word.reshape(1, -1)
-
-                # detect
-                detected_word = self.detector(received_word, 'val')
-
-                # decode
-                decoded_word = [decode(detected_word) for detected_word in detected_word.cpu().numpy()]
-                decoded_word = torch.Tensor(decoded_word).to(device)
-
-                # calculate accuracy
-                ser, fer, err_indices = calculate_error_rates(decoded_word, transmitted_word)
-
-                # encode word again
-                decoded_word_array = decoded_word.int().cpu().numpy()
-                encoded_word = torch.Tensor(encode(decoded_word_array).reshape(1, -1)).to(device)
-                errors_num = torch.sum(torch.abs(encoded_word - detected_word)).item()
-                print('*' * 20)
-                print(f'current: {count, ser, errors_num}')
-
-                if ser <= SER_THRESH:
-                    # run training loops
-                    for i in range(SELF_SUPERVISED_ITERATIONS):
-                        # calculate soft values
-                        soft_estimation = self.detector(received_word, 'train')
-                        labels = detected_word if ser > 0 else encoded_word
-                        self.run_train_loop(soft_estimation=soft_estimation, transmitted_words=labels)
-
-                total_ser += ser
-                if (count + 1) % 10 == 0:
-                    print(f'Self-supervised: {count + 1}/{transmitted_words.shape[0]}, SER {total_ser / (count + 1)}')
-            total_ser /= transmitted_words.shape[0]
-            print(f'Final ser: {total_ser}')
-            return total_ser
+            return self.online_training(gamma, snr)
         else:
             # a normal evaluation, return evaluation of parent class
             return super().single_eval(snr, gamma)
 
+    def online_training(self, gamma: float, snr: float) -> float:
+        self.deep_learning_setup()
+        # draw words of given gamma for all snrs
+        transmitted_words, received_words = self.channel_dataset['val'].__getitem__(snr_list=[snr], gamma=gamma)
+        # self-supervised loop
+        total_ser = 0
+        for count, (transmitted_word, received_word) in enumerate(zip(transmitted_words, received_words)):
+            transmitted_word, received_word = transmitted_word.reshape(1, -1), received_word.reshape(1, -1)
+
+            # detect
+            detected_word = self.detector(received_word, 'val')
+
+            # decode
+            decoded_word = [decode(detected_word) for detected_word in detected_word.cpu().numpy()]
+            decoded_word = torch.Tensor(decoded_word).to(device)
+
+            # calculate accuracy
+            ser, fer, err_indices = calculate_error_rates(decoded_word, transmitted_word)
+
+            # encode word again
+            decoded_word_array = decoded_word.int().cpu().numpy()
+            encoded_word = torch.Tensor(encode(decoded_word_array).reshape(1, -1)).to(device)
+            errors_num = torch.sum(torch.abs(encoded_word - detected_word)).item()
+            print('*' * 20)
+            print(f'current: {count, ser, errors_num}')
+
+            if ser <= SER_THRESH:
+                # run training loops
+                for i in range(SELF_SUPERVISED_ITERATIONS):
+                    # calculate soft values
+                    soft_estimation = self.detector(received_word, 'train')
+                    labels = detected_word if ser > 0 else encoded_word
+                    self.run_train_loop(soft_estimation=soft_estimation, transmitted_words=labels)
+
+            total_ser += ser
+            if (count + 1) % 10 == 0:
+                print(f'Self-supervised: {count + 1}/{transmitted_words.shape[0]}, SER {total_ser / (count + 1)}')
+        total_ser /= transmitted_words.shape[0]
+        print(f'Final ser: {total_ser}')
+        return total_ser
+
 
 if __name__ == '__main__':
     dec = VNETTrainer()
-    # dec.train()
-    dec.evaluate()
+    dec.train()
+    # dec.evaluate()
