@@ -92,7 +92,7 @@ class ChannelModelDataset(Dataset):
 
         database.append((b_full, y_full))
 
-    def transmit(self, c, h, snr):
+    def transmit(self, c: np.ndarray, h: np.ndarray, snr: float):
         if self.channel_type == 'ISI_AWGN':
             # modulation
             s = BPSKModulator.modulate(c)
