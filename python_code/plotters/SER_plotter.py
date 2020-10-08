@@ -221,7 +221,7 @@ def add_viterbinet_composite(all_curves):
 
 
 def add_viterbinet_self_supervised(all_curves):
-    dec = VNETTrainer(val_SNR_start=6, val_SNR_end=12, val_SNR_step=2, val_block_length=1784,
+    dec = VNETTrainer(val_SNR_start=12, val_SNR_end=12, val_SNR_step=2, val_block_length=1784,
                       noisy_est_var=0, fading_in_channel=True, fading_in_decoder=False, use_ecc=True,
                       self_supervised=True, val_words=200,
                       gamma_start=0.2, gamma_end=0.2, gamma_num=1, channel_type='ISI_AWGN',

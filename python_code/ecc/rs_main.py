@@ -29,11 +29,11 @@ def decode(binary_rx: np.ndarray):
     symbols_rx = convert_binary_to_field(binary_rx.astype(int))
     synd = rs_calc_syndromes(symbols_rx, nsym=32)
     err_loc = rs_find_error_locator(synd, nsym=32)
-    pos = rs_find_errors(err_loc[::-1], len(symbols_rx))  # find the errors locations
-    try:
-        corrected_word = rs_correct_errata(symbols_rx, synd, pos)[:-32]
-    except Exception:
+    if err_loc is None:
         corrected_word = symbols_rx[:-32]
+    else:
+        pos = rs_find_errors(err_loc[::-1], len(symbols_rx))  # find the errors locations
+        corrected_word = rs_correct_errata(symbols_rx, synd, pos)[:-32]
     return convert_field_to_binary(corrected_word)
 
 
