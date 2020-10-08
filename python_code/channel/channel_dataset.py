@@ -28,6 +28,7 @@ class ChannelModelDataset(Dataset):
                  word_rand_gen: mtrand.RandomState,
                  noisy_est_var: float,
                  use_ecc: bool,
+                 n_symbols: int,
                  fading_in_channel: bool,
                  fading_in_decoder: bool,
                  phase: str):
@@ -43,9 +44,10 @@ class ChannelModelDataset(Dataset):
         self.noisy_est_var = noisy_est_var
         self.fading_in_channel = fading_in_channel
         self.fading_in_decoder = fading_in_decoder
+        self.n_symbols = n_symbols
         self.phase = phase
         if use_ecc and phase == 'val':
-            self.encoding = lambda b: encode(b)
+            self.encoding = lambda b: encode(b, self.n_symbols)
         else:
             self.encoding = lambda b: b
 

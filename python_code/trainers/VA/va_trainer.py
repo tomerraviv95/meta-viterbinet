@@ -55,7 +55,7 @@ class VATrainer(Trainer):
         detected_words = self.detector(received_words, 'val', gamma)
 
         if self.use_ecc:
-            decoded_words = [decode(detected_word) for detected_word in detected_words.cpu().numpy()]
+            decoded_words = [decode(detected_word,self.n_symbols) for detected_word in detected_words.cpu().numpy()]
             detected_words = torch.Tensor(decoded_words).to(device)
 
         for snr_ind in range(len(self.snr_range['val'])):

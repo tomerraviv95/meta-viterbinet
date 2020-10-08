@@ -1,9 +1,10 @@
 # general
-run_name: 'self_supervised_viterbinet'
+run_name: 'self_supervised_viterbinet_failure'
 
 # coding parameters
 channel_blocks: 10
 use_ecc: True
+n_symbols: 3
 
 # channel
 memory_length: 4
@@ -18,16 +19,17 @@ gamma_end: 0.2
 gamma_num: 1
 
 # validation hyperparameters
-val_block_length: 1784
+val_block_length: 80
 val_SNR_start: 12
 val_SNR_end: 12
 val_SNR_step: 2
-val_words: 200
+val_words: 100
+eval_mode: 'by_word' # 'aggregated','by_word'
 
 # train hyperparameters
 train_block_length: 5000
 train_minibatch_num: 100
-train_minibatch_size: 500
+train_minibatch_size: 32
 train_SNR_start: 12
 train_SNR_end: 12
 train_SNR_step: 2

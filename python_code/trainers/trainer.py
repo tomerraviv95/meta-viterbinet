@@ -26,6 +26,7 @@ class Trainer(object):
         # code parameters
         self.channel_blocks = None
         self.use_ecc = None
+        self.n_symbols = None
 
         # channel
         self.memory_length = None
@@ -45,6 +46,7 @@ class Trainer(object):
         self.val_SNR_end = None
         self.val_SNR_step = None
         self.val_words = None
+        self.eval_mode = None
 
         # training hyperparameters
         self.train_block_length = None
@@ -77,7 +79,6 @@ class Trainer(object):
         self.rand_gen = np.random.RandomState(self.noise_seed)
         self.word_rand_gen = np.random.RandomState(self.word_seed)
         self.n_states = 2 ** self.memory_length
-        self.check_code_properties()
 
         # initialize matrices, datasets and detector
         self.initialize_dataloaders()
@@ -116,16 +117,16 @@ class Trainer(object):
     def get_name(self):
         return self.__name__()
 
-    def check_code_properties(self):
-        if self.use_ecc and self.val_block_length != 1784:
-            raise ValueError('Block length is not supported with ECC!!! Only 1784 is supported')
-
     def initialize_detector(self):
         """
         Every trainer must have some base detector model
         """
         self.detector = None
         pass
+
+    def check_eval_mode(self):
+        if self.eval_mode != 'aggregated' and self.eval_mode != 'by_word':
+            raise ValueError("No such eval mode!!!")
 
     # calculate train loss
     def calc_loss(self, soft_estimation: torch.Tensor, transmitted_words: torch.Tensor) -> torch.Tensor:
@@ -174,7 +175,7 @@ class Trainer(object):
         self.words_per_phase = {'train': 1, 'val': self.val_words}
         self.block_lengths = {'train': self.train_block_length, 'val': self.val_block_length}
         self.transmission_lengths = {'train': self.train_block_length,
-                                     'val': self.val_block_length if not self.use_ecc else 2040}
+                                     'val': self.val_block_length if not self.use_ecc else self.val_block_length + 8 * self.n_symbols}
         self.channel_dataset = {
             phase: ChannelModelDataset(channel_type=self.channel_type,
                                        block_length=self.block_lengths[phase],
@@ -186,12 +187,16 @@ class Trainer(object):
                                        word_rand_gen=self.word_rand_gen,
                                        noisy_est_var=self.noisy_est_var,
                                        use_ecc=self.use_ecc,
+                                       n_symbols=self.n_symbols,
                                        fading_in_channel=self.fading_in_channel,
                                        fading_in_decoder=self.fading_in_decoder,
                                        phase=phase)
             for phase in ['train', 'val']}
         self.dataloaders = {phase: torch.utils.data.DataLoader(self.channel_dataset[phase])
                             for phase in ['train', 'val']}
+
+    def load_weights(self, snr: float, gamma: float):
+        pass
 
     def single_eval(self, snr: float, gamma: float) -> float:
         """
@@ -206,15 +211,25 @@ class Trainer(object):
         detected_words = self.detector(received_words, 'val')
 
         if self.use_ecc:
-            decoded_words = [decode(detected_word) for detected_word in detected_words.cpu().numpy()]
+            decoded_words = [decode(detected_word, self.n_symbols) for detected_word in detected_words.cpu().numpy()]
             detected_words = torch.Tensor(decoded_words).to(device)
 
         ser, fer, err_indices = calculate_error_rates(detected_words, transmitted_words)
 
         return ser
 
-    def gamma_eval(self, gamma) -> np.ndarray:
-        pass
+    def gamma_eval(self, gamma: float) -> np.ndarray:
+        """
+        Evaluation at a single gamma value.
+        :return: ser for batch.
+        """
+        ser_total = np.zeros(len(self.snr_range['val']))
+
+        for snr_ind, snr in enumerate(self.snr_range['val']):
+            self.load_weights(snr, gamma)
+            ser_total[snr_ind] = self.single_eval(snr, gamma)
+
+        return ser_total
 
     def evaluate(self) -> np.ndarray:
         """

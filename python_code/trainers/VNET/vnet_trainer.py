@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Union
 from python_code.detectors.VNET.vnet_detector import VNETDetector
 from python_code.ecc.rs_main import decode, encode
 from python_code.utils.metrics import calculate_error_rates
@@ -50,19 +50,6 @@ class VNETTrainer(Trainer):
         else:
             print(f'No checkpoint for snr {snr} and gamma {gamma} in run "{self.run_name}", starting from scratch')
 
-    def gamma_eval(self, gamma: float) -> np.ndarray:
-        """
-        Evaluation at a single gamma value.
-        :return: ser for batch.
-        """
-        ser_total = np.zeros(len(self.snr_range['val']))
-
-        for snr_ind, snr in enumerate(self.snr_range['val']):
-            self.load_weights(snr, gamma)
-            ser_total[snr_ind] = self.single_eval(snr, gamma)
-
-        return ser_total
-
     def select_batch(self, gt_states: torch.LongTensor, soft_estimation: torch.Tensor) -> Tuple[
         torch.LongTensor, torch.Tensor]:
         """
@@ -92,18 +79,20 @@ class VNETTrainer(Trainer):
         ViterbiNet single eval - either a normal evaluation or on-the-fly online training
         """
         # eval with training
-        if self.self_supervised is True:
-            return self.online_training(gamma, snr)
+        if self.self_supervised:
+            return self.online_training(snr, gamma)
         else:
             # a normal evaluation, return evaluation of parent class
             return super().single_eval(snr, gamma)
 
-    def online_training(self, gamma: float, snr: float) -> float:
+    def online_training(self, snr: float, gamma: float) -> Union[float, np.ndarray]:
+        self.check_eval_mode()
         self.deep_learning_setup()
         # draw words of given gamma for all snrs
         transmitted_words, received_words = self.channel_dataset['val'].__getitem__(snr_list=[snr], gamma=gamma)
         # self-supervised loop
         total_ser = 0
+        ser_by_word = np.zeros(transmitted_words.shape[0])
         for count, (transmitted_word, received_word) in enumerate(zip(transmitted_words, received_words)):
             transmitted_word, received_word = transmitted_word.reshape(1, -1), received_word.reshape(1, -1)
 
@@ -111,7 +100,7 @@ class VNETTrainer(Trainer):
             detected_word = self.detector(received_word, 'val')
 
             # decode
-            decoded_word = [decode(detected_word) for detected_word in detected_word.cpu().numpy()]
+            decoded_word = [decode(detected_word, self.n_symbols) for detected_word in detected_word.cpu().numpy()]
             decoded_word = torch.Tensor(decoded_word).to(device)
 
             # calculate accuracy
@@ -119,7 +108,7 @@ class VNETTrainer(Trainer):
 
             # encode word again
             decoded_word_array = decoded_word.int().cpu().numpy()
-            encoded_word = torch.Tensor(encode(decoded_word_array).reshape(1, -1)).to(device)
+            encoded_word = torch.Tensor(encode(decoded_word_array, self.n_symbols).reshape(1, -1)).to(device)
             errors_num = torch.sum(torch.abs(encoded_word - detected_word)).item()
             print('*' * 20)
             print(f'current: {count, ser, errors_num}')
@@ -133,14 +122,30 @@ class VNETTrainer(Trainer):
                     self.run_train_loop(soft_estimation=soft_estimation, transmitted_words=labels)
 
             total_ser += ser
+            ser_by_word[count] = ser
             if (count + 1) % 10 == 0:
                 print(f'Self-supervised: {count + 1}/{transmitted_words.shape[0]}, SER {total_ser / (count + 1)}')
         total_ser /= transmitted_words.shape[0]
         print(f'Final ser: {total_ser}')
+        if self.eval_mode == 'by_word':
+            return ser_by_word
         return total_ser
+
+    def evaluate(self) -> np.ndarray:
+        """
+        Evaluation either happens in a point aggregation way, or in a word-by-word fashion
+        """
+        # eval with training
+        if self.eval_mode == 'by_word' and self.self_supervised:
+            snr = self.snr_range['val'][0]
+            gamma = self.gamma_range[0]
+            self.load_weights(snr, gamma)
+            return self.online_training(snr, gamma)
+        else:
+            return super().evaluate()
 
 
 if __name__ == '__main__':
     dec = VNETTrainer()
-    dec.train()
-    # dec.evaluate()
+    # dec.train()
+    dec.evaluate()
