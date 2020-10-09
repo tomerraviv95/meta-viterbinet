@@ -38,10 +38,12 @@ def plot_all_curves(all_curves: List[Tuple[np.ndarray, np.ndarray, str]]):
     # iterate all curves, plot each one
     for ser, method_name, _, _ in all_curves:
         block_range = np.arange(len(ser))
-        plt.plot(block_range, ser, label=method_name, marker='o', color='r',
+        c = 'black' if np.sum(ser > 0) < 7 else 'red'
+        plt.plot(block_range, ser, label=method_name, marker='o', color=c,
                  linestyle='solid', linewidth=2.2, markersize=12)
         min_block_ind = block_range[0] if block_range[0] < min_block_ind else min_block_ind
         max_block_ind = block_range[-1] if block_range[-1] > max_block_ind else max_block_ind
+
 
     plt.ylabel('SER')
     plt.xlabel('Block Index')
@@ -59,23 +61,32 @@ def plot_schematic(all_curves):
     if not os.path.isdir(os.path.join(FIGURES_DIR, folder_name)):
         os.makedirs(os.path.join(FIGURES_DIR, folder_name))
 
-    ser_thresh = 0.01
+    ser_thresh = 0
     plt.figure()
+    val_block_lengths = []
+    n_symbols = []
+    colors = []
     for ser, _, val_block_length, n_symbol in all_curves:
-        c = 'red' if np.mean(ser) > ser_thresh else 'black'
-        plt.scatter(n_symbol, val_block_length, c=c)
-    plt.ylabel('Block Length')
-    plt.xlabel('Num of Symbols')
+        c = 'black' if np.sum(ser>0)<7 else 'red'
+        val_block_lengths.append(val_block_length)
+        n_symbols.append(n_symbol)
+        colors.append(c)
+    plt.scatter(val_block_lengths, n_symbols, c=colors)
+    plt.xticks(val_block_lengths, val_block_lengths)
+    plt.xlabel('Block Length')
+    plt.ylabel('Num of Symbols')
     plt.grid(which='both', ls='--')
     plt.legend(loc='lower left', prop={'size': 15})
-    plt.savefig(os.path.join(FIGURES_DIR, folder_name, f'block_length_versus_symbols_num_thresh_{ser_thresh}.png'),
+    plt.savefig(os.path.join(FIGURES_DIR, folder_name, f'block_length_versus_symbols_num.png'),
                 bbox_inches='tight')
     plt.show()
 
 
 def add_viterbi_failure(all_curves):
     val_block_lengths = [40, 80, 120, 160, 200, 240, 280, 320, 360, 400]
+    val_block_lengths = [40]
     n_symbols = [1, 2, 3, 4, 5, 6, 7, 8]
+    n_symbols = [3,4]
     for val_block_length in val_block_lengths:
         for n_symbol in n_symbols:
             print(val_block_length, n_symbol)
@@ -93,5 +104,5 @@ if __name__ == '__main__':
     run_over = False
     all_curves = []
     add_viterbi_failure(all_curves)
-    # plot_all_curves(all_curves)
-    plot_schematic(all_curves)
+    plot_all_curves(all_curves)
+    # plot_schematic(all_curves)
