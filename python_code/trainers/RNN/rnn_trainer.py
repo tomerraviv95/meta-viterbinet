@@ -1,4 +1,6 @@
 from typing import Tuple, Union
+
+from python_code.detectors.RNN.rnn_detector import RNNDetector
 from python_code.detectors.VNET.vnet_detector import VNETDetector
 from python_code.ecc.rs_main import decode, encode
 from python_code.utils.metrics import calculate_error_rates
@@ -13,9 +15,9 @@ SER_THRESH = 0.02
 SELF_SUPERVISED_ITERATIONS = 500
 
 
-class VNETTrainer(Trainer):
+class RNNTrainer(Trainer):
     """
-    Trainer for the ViterbiNet model.
+    Trainer for the RNN model.
     """
 
     def __init__(self, config_path=None, **kwargs):
@@ -27,28 +29,13 @@ class VNETTrainer(Trainer):
         else:
             channel_state = ', perfect CSI'
 
-        return 'ViterbiNet' + channel_state
+        return 'RNN' + channel_state
 
     def initialize_detector(self):
         """
         Loads the ViterbiNet detector
         """
-        self.detector = VNETDetector(n_states=self.n_states,
-                                     transmission_lengths=self.transmission_lengths)
-
-    def load_weights(self, snr: float, gamma: float):
-        """
-        Loads detector's weights defined by the [snr,gamma] from checkpoint, if exists
-        """
-        if os.path.join(self.weights_dir, f'snr_{snr}_gamma_{gamma}.pt'):
-            print(f'loading model from snr {snr} and gamma {gamma}')
-            checkpoint = torch.load(os.path.join(self.weights_dir, f'snr_{snr}_gamma_{gamma}.pt'))
-            try:
-                self.detector.load_state_dict(checkpoint['model_state_dict'])
-            except Exception:
-                raise ValueError("Wrong run directory!!!")
-        else:
-            print(f'No checkpoint for snr {snr} and gamma {gamma} in run "{self.run_name}", starting from scratch')
+        self.detector = RNNDetector()
 
     def calc_loss(self, soft_estimation: torch.Tensor, transmitted_words: torch.IntTensor) -> torch.Tensor:
         """
@@ -57,9 +44,9 @@ class VNETTrainer(Trainer):
         :param transmitted_words: [1, transmission_length]
         :return: loss value
         """
-        gt_states = calculate_states(self.memory_length, transmitted_words)
-        gt_states_batch, input_batch = self.select_batch(gt_states, soft_estimation.reshape(-1, self.n_states))
-        loss = self.criterion(input=input_batch, target=gt_states_batch)
+        gt_batch, input_batch = self.select_batch(transmitted_words.long().reshape(-1),
+                                                  soft_estimation.reshape(-1, 2))
+        loss = self.criterion(input=input_batch, target=gt_batch)
         return loss
 
     def single_eval(self, snr: float, gamma: float) -> float:
@@ -134,6 +121,6 @@ class VNETTrainer(Trainer):
 
 
 if __name__ == '__main__':
-    dec = VNETTrainer()
-    # dec.train()
-    dec.evaluate()
+    dec = RNNTrainer()
+    dec.train()
+    # dec.evaluate()

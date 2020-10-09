@@ -1,3 +1,5 @@
+from typing import Tuple
+
 from python_code.channel.channel_dataset import ChannelModelDataset
 from python_code.ecc.rs_main import decode
 from python_code.utils.early_stopping import EarlyStopping
@@ -195,9 +197,6 @@ class Trainer(object):
         self.dataloaders = {phase: torch.utils.data.DataLoader(self.channel_dataset[phase])
                             for phase in ['train', 'val']}
 
-    def load_weights(self, snr: float, gamma: float):
-        pass
-
     def single_eval(self, snr: float, gamma: float) -> float:
         """
         Evaluation at a single snr.
@@ -305,3 +304,29 @@ class Trainer(object):
                     'optimizer_state_dict': self.optimizer.state_dict(),
                     'loss': current_loss},
                    os.path.join(self.weights_dir, f'snr_{snr}_gamma_{gamma}.pt'))
+
+    def load_weights(self, snr: float, gamma: float):
+        """
+        Loads detector's weights defined by the [snr,gamma] from checkpoint, if exists
+        """
+        if os.path.join(self.weights_dir, f'snr_{snr}_gamma_{gamma}.pt'):
+            print(f'loading model from snr {snr} and gamma {gamma}')
+            checkpoint = torch.load(os.path.join(self.weights_dir, f'snr_{snr}_gamma_{gamma}.pt'))
+            try:
+                self.detector.load_state_dict(checkpoint['model_state_dict'])
+            except Exception:
+                raise ValueError("Wrong run directory!!!")
+        else:
+            print(f'No checkpoint for snr {snr} and gamma {gamma} in run "{self.run_name}", starting from scratch')
+
+    def select_batch(self, gt_examples: torch.LongTensor, soft_estimation: torch.Tensor) -> Tuple[
+        torch.LongTensor, torch.Tensor]:
+        """
+        Select a batch from the input and gt labels
+        :param gt_examples: training labels
+        :param soft_estimation: the soft approximation, distribution over states (per word)
+        :return: selected batch from the entire "epoch", contains both labels and the NN soft approximation
+        """
+        rand_ind = torch.multinomial(torch.arange(gt_examples.shape[0]).float(),
+                                     self.train_minibatch_size).long().to(device)
+        return gt_examples[rand_ind], soft_estimation[rand_ind]

@@ -36,10 +36,10 @@ class VNETDetector(nn.Module):
     def forward(self, y: torch.Tensor, phase: str) -> torch.Tensor:
         """
         The forward pass of the ViterbiNet algorithm
-        :param y: input values
+        :param y: input values, size [batch_size,transmission_length]
         :param phase: 'train' or 'val'
-        :returns if in 'train' - the estimated priors [batch_size,block_length,n_states]
-        if in 'val' - the detected words [n_batch,block_length]
+        :returns if in 'train' - the estimated priors [batch_size,transmission_length,n_states]
+        if in 'val' - the detected words [n_batch,transmission_length]
         """
         # initialize input probabilities
         in_prob = torch.zeros([y.shape[0], self.n_states]).to(device)
