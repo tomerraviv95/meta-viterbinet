@@ -8,6 +8,7 @@ import math
 import os
 import itertools
 from python_code.plotters.SER_plotter import get_ser_plot
+from python_code.trainers.RNN.rnn_trainer import RNNTrainer
 from python_code.trainers.VA.va_trainer import VATrainer
 from python_code.trainers.VNET.vnet_trainer import VNETTrainer
 
@@ -44,7 +45,6 @@ def plot_all_curves(all_curves: List[Tuple[np.ndarray, np.ndarray, str]]):
         min_block_ind = block_range[0] if block_range[0] < min_block_ind else min_block_ind
         max_block_ind = block_range[-1] if block_range[-1] > max_block_ind else max_block_ind
 
-
     plt.ylabel('SER')
     plt.xlabel('Block Index')
     plt.grid(which='both', ls='--')
@@ -67,7 +67,7 @@ def plot_schematic(all_curves):
     n_symbols = []
     colors = []
     for ser, _, val_block_length, n_symbol in all_curves:
-        c = 'black' if np.sum(ser>0)<7 else 'red'
+        c = 'black' if np.sum(ser > 0) < 7 else 'red'
         val_block_lengths.append(val_block_length)
         n_symbols.append(n_symbol)
         colors.append(c)
@@ -84,9 +84,7 @@ def plot_schematic(all_curves):
 
 def add_viterbi_failure(all_curves):
     val_block_lengths = [40, 80, 120, 160, 200, 240, 280, 320, 360, 400]
-    val_block_lengths = [40]
     n_symbols = [1, 2, 3, 4, 5, 6, 7, 8]
-    n_symbols = [3,4]
     for val_block_length in val_block_lengths:
         for n_symbol in n_symbols:
             print(val_block_length, n_symbol)
@@ -100,9 +98,26 @@ def add_viterbi_failure(all_curves):
             all_curves.append((ser, method_name, val_block_length, n_symbol))
 
 
+def add_rnn_failure(all_curves):
+    val_block_lengths = [40, 80, 120, 160, 200, 240, 280, 320, 360, 400]
+    n_symbols = [1, 2, 3, 4, 5, 6, 7, 8]
+    for val_block_length in val_block_lengths:
+        for n_symbol in n_symbols:
+            print(val_block_length, n_symbol)
+            dec = RNNTrainer(val_SNR_start=12, val_SNR_end=12, val_SNR_step=2, val_block_length=val_block_length,
+                             noisy_est_var=0, fading_in_channel=True, fading_in_decoder=False, use_ecc=True,
+                             gamma_start=0.2, gamma_end=0.2, gamma_num=1, channel_type='ISI_AWGN',
+                             self_supervised=True, val_words=100, eval_mode='by_word', n_symbols=n_symbol,
+                             weights_dir=os.path.join(WEIGHTS_DIR, 'self_supervised_rnn_model'))
+            method_name = f'RNN - Block Length {val_block_length}, Error symbols {n_symbol}'
+            ser = get_ser_plot(dec, run_over=run_over, method_name=method_name)
+            all_curves.append((ser, method_name, val_block_length, n_symbol))
+
+
 if __name__ == '__main__':
     run_over = False
     all_curves = []
-    add_viterbi_failure(all_curves)
+    # add_viterbi_failure(all_curves)
+    add_rnn_failure(all_curves)
     plot_all_curves(all_curves)
     # plot_schematic(all_curves)

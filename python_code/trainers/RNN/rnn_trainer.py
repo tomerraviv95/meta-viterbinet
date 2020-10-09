@@ -1,14 +1,11 @@
 from typing import Tuple, Union
 
 from python_code.detectors.RNN.rnn_detector import RNNDetector
-from python_code.detectors.VNET.vnet_detector import VNETDetector
 from python_code.ecc.rs_main import decode, encode
 from python_code.utils.metrics import calculate_error_rates
-from python_code.utils.trellis_utils import calculate_states
-from python_code.trainers.trainer import Trainer, STEPS_NUM
+from python_code.trainers.trainer import Trainer
 import numpy as np
 import torch
-import os
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 SER_THRESH = 0.02
@@ -122,5 +119,5 @@ class RNNTrainer(Trainer):
 
 if __name__ == '__main__':
     dec = RNNTrainer()
-    dec.train()
-    # dec.evaluate()
+    # dec.train()
+    dec.evaluate()
