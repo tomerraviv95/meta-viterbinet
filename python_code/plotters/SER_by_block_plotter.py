@@ -119,5 +119,5 @@ if __name__ == '__main__':
     all_curves = []
     # add_viterbi_failure(all_curves)
     add_rnn_failure(all_curves)
-    plot_all_curves(all_curves)
-    # plot_schematic(all_curves)
+    # plot_all_curves(all_curves)
+    plot_schematic(all_curves)

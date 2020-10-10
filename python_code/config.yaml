@@ -3,14 +3,14 @@ run_name: 'self_supervised_rnn_model'
 
 # coding parameters
 channel_blocks: 10
-use_ecc: True
+use_ecc: False
 n_symbols: 8
 
 # channel
 memory_length: 4
 channel_type: 'ISI_AWGN' #'ISI_AWGN','Poisson'
 noisy_est_var: 0 # 0, 0.1 for ISI_AWGN, 0.08 for Poisson
-fading_in_channel: True
+fading_in_channel: False
 fading_in_decoder: False
 
 # gamma values
@@ -19,27 +19,27 @@ gamma_end: 0.2
 gamma_num: 1
 
 # validation hyperparameters
-val_block_length: 40
-val_SNR_start: 12
-val_SNR_end: 12
+val_block_length: 10000
+val_SNR_start: 6
+val_SNR_end: 14
 val_SNR_step: 2
-val_words: 100
-eval_mode: 'by_word' # 'aggregated','by_word'
+val_words: 10
+eval_mode: 'aggregated' # 'aggregated','by_word'
 
 # train hyperparameters
 train_block_length: 5000
 train_minibatch_num: 200
-train_minibatch_size: 32
-train_SNR_start: 12
-train_SNR_end: 12
+train_minibatch_size: 512
+train_SNR_start: 6
+train_SNR_end: 14
 train_SNR_step: 2
 lr: 0.001 # learning rate
 loss_type: 'CrossEntropy' # 'BCE','CrossEntropy','MSE'
 print_every_n_train_minibatches: 10
 optimizer_type: 'Adam' # 'Adam','RMSprop','SGD'
-early_stopping_mode: 'on' # 'on', 'off'
-self_supervised: True
+early_stopping_mode: False # True, False
+self_supervised: False
 
 # seed
-noise_seed: 3450001
-word_seed: 7860001
+noise_seed: 3450002
+word_seed: 7860002

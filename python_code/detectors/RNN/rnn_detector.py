@@ -39,13 +39,16 @@ class RNNDetector(nn.Module):
         h_n = torch.zeros(self.num_layers * 2, batch_size, self.hidden_size).to(device)  # 2 for bidirection
         c_n = torch.zeros(self.num_layers * 2, batch_size, self.hidden_size).to(device)
 
-        # pad and reshape y to the proper shape
+        # pad and reshape y to the proper shape - (batch_size,seq_length,input_size)
         padded_y = torch.nn.functional.pad(y, [0, INPUT_SIZE - 1, 0, 0], value=-100)
         sequence_y = torch.cat([torch.roll(padded_y.unsqueeze(1), i, 2) for i in range(INPUT_SIZE - 1, -1, -1)], dim=1)
         sequence_y = sequence_y.transpose(1, 2)[:, :transmission_length]
 
         # Forward propagate LSTM - lstm_out: tensor of shape (batch_size, seq_length, hidden_size*2)
-        lstm_out, _ = self.lstm(sequence_y, (h_n, c_n))
+        lstm_out = torch.zeros(batch_size, transmission_length, 2 * HIDDEN_SIZE).to(device)
+        for i in range(batch_size):
+            lstm_out[i], _ = self.lstm(sequence_y[i].unsqueeze(0),
+                                       (h_n[:, i].unsqueeze(1).contiguous(), c_n[:, i].unsqueeze(1).contiguous()))
 
         # out: tensor of shape (batch_size, seq_length, N_CLASSES)
         out = self.fc(lstm_out.reshape(-1, HIDDEN_SIZE * 2)).reshape(batch_size, transmission_length, N_CLASSES)

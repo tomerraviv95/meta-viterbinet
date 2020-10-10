@@ -107,6 +107,7 @@ class RNNTrainer(Trainer):
         """
         Evaluation either happens in a point aggregation way, or in a word-by-word fashion
         """
+
         # eval with training
         if self.eval_mode == 'by_word' and self.self_supervised:
             snr = self.snr_range['val'][0]

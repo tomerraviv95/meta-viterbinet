@@ -1,5 +1,6 @@
 import math
 
+from python_code.trainers.RNN.rnn_trainer import RNNTrainer
 from python_code.trainers.VNET.vnet_trainer import VNETTrainer
 from python_code.utils.python_utils import load_pkl, save_pkl
 from python_code.trainers.VA.va_trainer import VATrainer
@@ -42,7 +43,9 @@ MARKERS_DICT = {'Viterbi, CSI uncertainty': 'x',
                 'Viterbi, Full CSI (paper)': '^',
                 'ViterbiNet, initial training (paper)': '>',
                 'ViterbiNet, composite training (paper)': 'o',
-                'ViterbiNet, online training (paper)': 's'
+                'ViterbiNet, online training (paper)': 's',
+                'RNN Detector, Gamma 0.2, clean channel': 'o',
+                'ViterbiNet, Gamma 0.2, clean channel': '>'
                 }
 COLORS_DICT = {'Viterbi, CSI uncertainty': 'black',
                'Viterbi, CSI uncertainty (paper)': 'black',
@@ -62,6 +65,8 @@ COLORS_DICT = {'Viterbi, CSI uncertainty': 'black',
                'ViterbiNet, initial training (paper)': 'purple',
                'ViterbiNet, composite training (paper)': 'green',
                'ViterbiNet, online training (paper)': 'r',
+               'RNN Detector, Gamma 0.2, clean channel': 'cyan',
+               'ViterbiNet, Gamma 0.2, clean channel': 'green'
                }
 LINESTYLES_DICT = {'Viterbi, CSI uncertainty': 'solid',
                    'Viterbi, perfect CSI': 'solid',
@@ -72,6 +77,8 @@ LINESTYLES_DICT = {'Viterbi, CSI uncertainty': 'solid',
                    'ViterbiNet, initial training': 'solid',
                    'ViterbiNet, composite training': 'solid',
                    'ViterbiNet, online training': 'solid',
+                   'RNN Detector, Gamma 0.2, clean channel': 'solid',
+                   'ViterbiNet, Gamma 0.2, clean channel': 'solid',
                    'Viterbi, CSI uncertainty (paper)': 'dotted',
                    'Viterbi, perfect CSI (paper)': 'dotted',
                    'ViterbiNet, CSI uncertainty (paper)': 'dotted',
@@ -260,6 +267,35 @@ def add_viterbinet_self_supervised_paper(all_curves):
     all_curves.append((snr_range, ser_paper, 'ViterbiNet, online training (paper)'))
 
 
+def add_viterbinet_clean_channel(all_curves):
+    dec = VNETTrainer(val_SNR_start=6, val_SNR_end=12, val_SNR_step=2, val_block_length=50000,
+                      noisy_est_var=0, fading_in_channel=False, fading_in_decoder=False, use_ecc=False,
+                      self_supervised=False, val_words=50, eval_mode='aggregated',
+                      gamma_start=0.2, gamma_end=0.2, gamma_num=1, channel_type='ISI_AWGN',
+                      weights_dir=os.path.join(WEIGHTS_DIR, 'viterbinet_gamma_0.2'))
+    ser = get_ser_plot(dec, run_over=run_over, method_name='ViterbiNet, Gamma 0.2, clean channel')
+    all_curves.append((dec.snr_range['val'], ser, 'ViterbiNet, Gamma 0.2, clean channel'))
+
+
+def add_rnn_clean_channel(all_curves):
+    dec = RNNTrainer(val_SNR_start=6, val_SNR_end=12, val_SNR_step=2, val_block_length=50000,
+                     noisy_est_var=0, fading_in_channel=False, fading_in_decoder=False, use_ecc=False,
+                     self_supervised=False, val_words=50, eval_mode='aggregated',
+                     gamma_start=0.2, gamma_end=0.2, gamma_num=1, channel_type='ISI_AWGN',
+                     weights_dir=os.path.join(WEIGHTS_DIR, 'self_supervised_rnn_model'))
+    ser = get_ser_plot(dec, run_over=run_over, method_name='RNN Detector, Gamma 0.2, clean channel')
+    all_curves.append((dec.snr_range['val'], ser, 'RNN Detector, Gamma 0.2, clean channel'))
+
+
+def add_viterbi_clean_channel(all_curves):
+    dec = VATrainer(val_SNR_start=6, val_SNR_end=12, val_SNR_step=2, val_block_length=50000, noisy_est_var=0,
+                    fading_in_channel=False, fading_in_decoder=False, use_ecc=False,
+                    self_supervised=False, val_words=50, eval_mode='aggregated',
+                    gamma_start=0.2, gamma_end=0.2, gamma_num=1, channel_type='ISI_AWGN')
+    ser = get_ser_plot(dec, run_over=run_over, method_name='Viterbi, Full CSI, clean channel')
+    all_curves.append((dec.snr_range['val'], ser, 'Viterbi, Full CSI'))
+
+
 def get_figure_six_curves(all_curves):
     # Viterbi - noisy estimate of CSI
     add_noisy_viterbi(all_curves)
@@ -296,12 +332,20 @@ def get_figure_thirteen_curves(all_curves):
     add_viterbinet_self_supervised_paper(all_curves)
 
 
+def compare_viterbinet_to_rnn(all_curves):
+    add_viterbinet_clean_channel(all_curves)
+    add_rnn_clean_channel(all_curves)
+    add_viterbi_clean_channel(all_curves)
+
+
 if __name__ == '__main__':
     run_over = False
     all_curves = []
 
     # get_figure_six_curves(all_curves)
 
-    get_figure_thirteen_curves(all_curves)
+    # get_figure_thirteen_curves(all_curves)
+
+    compare_viterbinet_to_rnn(all_curves)
 
     plot_all_curves(all_curves)

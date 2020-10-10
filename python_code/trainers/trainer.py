@@ -153,7 +153,7 @@ class Trainer(object):
                                  lr=self.lr)
         else:
             raise NotImplementedError("No such optimizer implemented!!!")
-        if self.early_stopping_mode == 'on':
+        if self.early_stopping_mode:
             self.es = EarlyStopping(patience=4)
         else:
             self.es = None
@@ -236,11 +236,12 @@ class Trainer(object):
         :return: ber, fer, iterations vectors
         """
         ser_total = np.zeros(len(self.snr_range['val']))
-        for gamma_count, gamma in enumerate(self.gamma_range):
-            print(f'Starts evaluation at gamma {gamma}')
-            start = time()
-            ser_total += self.gamma_eval(gamma)
-            print(f'Done. time: {time() - start}, ser: {ser_total / (gamma_count + 1)}')
+        with torch.no_grad():
+            for gamma_count, gamma in enumerate(self.gamma_range):
+                print(f'Starts evaluation at gamma {gamma}')
+                start = time()
+                ser_total += self.gamma_eval(gamma)
+                print(f'Done. time: {time() - start}, ser: {ser_total / (gamma_count + 1)}')
         ser_total /= self.gamma_num
         return ser_total
 
@@ -278,7 +279,7 @@ class Trainer(object):
                         if ser < best_ser:
                             self.save_weights(current_loss, snr, gamma)
                             best_ser = ser
-                        if self.es.step(ser):
+                        if self.early_stopping_mode and self.es.step(ser):
                             break
 
                 print(f'best ser - {best_ser}')
