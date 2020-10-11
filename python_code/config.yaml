@@ -1,5 +1,5 @@
 # general
-run_name: 'self_supervised_rnn_model'
+run_name: 'new_rnn_no_bi'
 
 # coding parameters
 channel_blocks: 10
@@ -21,17 +21,17 @@ gamma_num: 1
 # validation hyperparameters
 val_block_length: 10000
 val_SNR_start: 6
-val_SNR_end: 14
+val_SNR_end: 6
 val_SNR_step: 2
-val_words: 10
+val_words: 1
 eval_mode: 'aggregated' # 'aggregated','by_word'
 
 # train hyperparameters
 train_block_length: 5000
 train_minibatch_num: 200
-train_minibatch_size: 512
+train_minibatch_size: 40
 train_SNR_start: 6
-train_SNR_end: 14
+train_SNR_end: 12
 train_SNR_step: 2
 lr: 0.001 # learning rate
 loss_type: 'CrossEntropy' # 'BCE','CrossEntropy','MSE'

@@ -331,3 +331,6 @@ class Trainer(object):
         rand_ind = torch.multinomial(torch.arange(gt_examples.shape[0]).float(),
                                      self.train_minibatch_size).long().to(device)
         return gt_examples[rand_ind], soft_estimation[rand_ind]
+
+    def count_parameters(self):
+        print(sum(p.numel() for p in self.detector.parameters() if p.requires_grad))

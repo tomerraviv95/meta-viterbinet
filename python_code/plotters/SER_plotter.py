@@ -270,7 +270,7 @@ def add_viterbinet_self_supervised_paper(all_curves):
 def add_viterbinet_clean_channel(all_curves):
     dec = VNETTrainer(val_SNR_start=6, val_SNR_end=12, val_SNR_step=2, val_block_length=50000,
                       noisy_est_var=0, fading_in_channel=False, fading_in_decoder=False, use_ecc=False,
-                      self_supervised=False, val_words=50, eval_mode='aggregated',
+                      self_supervised=False, val_words=25, eval_mode='aggregated',
                       gamma_start=0.2, gamma_end=0.2, gamma_num=1, channel_type='ISI_AWGN',
                       weights_dir=os.path.join(WEIGHTS_DIR, 'viterbinet_gamma_0.2'))
     ser = get_ser_plot(dec, run_over=run_over, method_name='ViterbiNet, Gamma 0.2, clean channel')
@@ -280,9 +280,9 @@ def add_viterbinet_clean_channel(all_curves):
 def add_rnn_clean_channel(all_curves):
     dec = RNNTrainer(val_SNR_start=6, val_SNR_end=12, val_SNR_step=2, val_block_length=50000,
                      noisy_est_var=0, fading_in_channel=False, fading_in_decoder=False, use_ecc=False,
-                     self_supervised=False, val_words=50, eval_mode='aggregated',
+                     self_supervised=False, val_words=25, eval_mode='aggregated',
                      gamma_start=0.2, gamma_end=0.2, gamma_num=1, channel_type='ISI_AWGN',
-                     weights_dir=os.path.join(WEIGHTS_DIR, 'self_supervised_rnn_model'))
+                     weights_dir=os.path.join(WEIGHTS_DIR, 'rnn_gamma_0.2'))
     ser = get_ser_plot(dec, run_over=run_over, method_name='RNN Detector, Gamma 0.2, clean channel')
     all_curves.append((dec.snr_range['val'], ser, 'RNN Detector, Gamma 0.2, clean channel'))
 
@@ -290,7 +290,7 @@ def add_rnn_clean_channel(all_curves):
 def add_viterbi_clean_channel(all_curves):
     dec = VATrainer(val_SNR_start=6, val_SNR_end=12, val_SNR_step=2, val_block_length=50000, noisy_est_var=0,
                     fading_in_channel=False, fading_in_decoder=False, use_ecc=False,
-                    self_supervised=False, val_words=50, eval_mode='aggregated',
+                    self_supervised=False, val_words=25, eval_mode='aggregated',
                     gamma_start=0.2, gamma_end=0.2, gamma_num=1, channel_type='ISI_AWGN')
     ser = get_ser_plot(dec, run_over=run_over, method_name='Viterbi, Full CSI, clean channel')
     all_curves.append((dec.snr_range['val'], ser, 'Viterbi, Full CSI'))

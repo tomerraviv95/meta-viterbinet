@@ -9,7 +9,7 @@ NUM_LAYERS = 2
 N_CLASSES = 2
 
 
-# Bidirectional recurrent neural network (many-to-one)
+# Directional recurrent neural network (many-to-one)
 class RNNDetector(nn.Module):
     """
     This class implements a sliding RNN detector
@@ -22,8 +22,8 @@ class RNNDetector(nn.Module):
     def initialize_rnn(self):
         self.hidden_size = HIDDEN_SIZE
         self.num_layers = NUM_LAYERS
-        self.lstm = nn.LSTM(INPUT_SIZE, HIDDEN_SIZE, NUM_LAYERS, batch_first=True, bidirectional=True).to(device)
-        self.fc = nn.Linear(HIDDEN_SIZE * 2, N_CLASSES).to(device)  # 2 for bidirection
+        self.lstm = nn.LSTM(INPUT_SIZE, HIDDEN_SIZE, NUM_LAYERS, batch_first=True, bidirectional=False).to(device)
+        self.fc = nn.Linear(HIDDEN_SIZE, N_CLASSES).to(device)
 
     def forward(self, y: torch.Tensor, phase: str) -> torch.Tensor:
         """
@@ -36,8 +36,8 @@ class RNNDetector(nn.Module):
         batch_size, transmission_length = y.size(0), y.size(1)
 
         # Set initial states
-        h_n = torch.zeros(self.num_layers * 2, batch_size, self.hidden_size).to(device)  # 2 for bidirection
-        c_n = torch.zeros(self.num_layers * 2, batch_size, self.hidden_size).to(device)
+        h_n = torch.zeros(self.num_layers, batch_size, self.hidden_size).to(device)
+        c_n = torch.zeros(self.num_layers, batch_size, self.hidden_size).to(device)
 
         # pad and reshape y to the proper shape - (batch_size,seq_length,input_size)
         padded_y = torch.nn.functional.pad(y, [0, INPUT_SIZE - 1, 0, 0], value=-100)
@@ -45,13 +45,13 @@ class RNNDetector(nn.Module):
         sequence_y = sequence_y.transpose(1, 2)[:, :transmission_length]
 
         # Forward propagate LSTM - lstm_out: tensor of shape (batch_size, seq_length, hidden_size*2)
-        lstm_out = torch.zeros(batch_size, transmission_length, 2 * HIDDEN_SIZE).to(device)
+        lstm_out = torch.zeros(batch_size, transmission_length, HIDDEN_SIZE).to(device)
         for i in range(batch_size):
             lstm_out[i], _ = self.lstm(sequence_y[i].unsqueeze(0),
                                        (h_n[:, i].unsqueeze(1).contiguous(), c_n[:, i].unsqueeze(1).contiguous()))
 
         # out: tensor of shape (batch_size, seq_length, N_CLASSES)
-        out = self.fc(lstm_out.reshape(-1, HIDDEN_SIZE * 2)).reshape(batch_size, transmission_length, N_CLASSES)
+        out = self.fc(lstm_out.reshape(-1, HIDDEN_SIZE)).reshape(batch_size, transmission_length, N_CLASSES)
 
         if phase == 'val':
             # Decode the output
