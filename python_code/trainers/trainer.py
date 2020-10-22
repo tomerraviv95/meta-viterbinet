@@ -173,7 +173,7 @@ class Trainer(object):
         self.snr_range = {'train': np.arange(self.train_SNR_start, self.train_SNR_end + 1, step=self.train_SNR_step),
                           'val': np.arange(self.val_SNR_start, self.val_SNR_end + 1, step=self.val_SNR_step)}
         self.gamma_range = np.linspace(self.gamma_start, self.gamma_end, self.gamma_num)
-        self.channel_blocks_per_phase = {'train': self.channel_blocks, 'val': self.channel_blocks}
+        self.channel_blocks_per_phase = {'train': self.channel_blocks, 'val': self.channel_blocks, 'meta_train': 1, 'meta_val': 1}
         self.words_per_phase = {'train': 1, 'val': self.val_words}
         self.block_lengths = {'train': self.train_block_length, 'val': self.val_block_length}
         self.transmission_lengths = {'train': self.train_block_length,
@@ -193,9 +193,10 @@ class Trainer(object):
                                        fading_in_channel=self.fading_in_channel,
                                        fading_in_decoder=self.fading_in_decoder,
                                        phase=phase)
-            for phase in ['train', 'val']}
+            for phase in ['train', 'val', 'meta_train', 'meta_val']}
         self.dataloaders = {phase: torch.utils.data.DataLoader(self.channel_dataset[phase])
-                            for phase in ['train', 'val']}
+                            for phase in ['train', 'val', 'meta_train',
+                                          'meta_val']}
 
     def single_eval(self, snr: float, gamma: float) -> float:
         """
@@ -244,6 +245,56 @@ class Trainer(object):
                 print(f'Done. time: {time() - start}, ser: {ser_total / (gamma_count + 1)}')
         ser_total /= self.gamma_num
         return ser_total
+
+
+    def meta_train(self):
+        # initialize weights and loss
+        self.initialize_detector()
+        self.deep_learning_setup()
+        best_ser = math.inf
+
+        snr = 10
+        gamma = 0.2
+
+        NUM_SUPP = 1000
+        NUM_QUERY = 4000
+        LR_INNER = 0.1
+        for minibatch in range(1, self.train_minibatch_num + 1):
+            # draw words
+            # at each minibatch, use different channel
+            transmitted_words, received_words = self.channel_dataset['meta_train'].__getitem__(snr_list=[snr],
+                                                                                          gamma=gamma)
+            # local update (with support set)
+            para_list_detector = list(map(lambda p: p[0], zip(self.detector.parameters())))
+            soft_estimation_supp = self.meta_detector(received_words[:, :NUM_SUPP], 'train', para_list_detector)
+            loss_supp = self.calc_loss(soft_estimation=soft_estimation_supp, transmitted_words=transmitted_words[:, :NUM_SUPP])
+            local_grad = torch.autograd.grad(loss_supp, para_list_detector, create_graph=True)
+            updated_para_list_detector = list(map(lambda p: p[1] - LR_INNER * p[0], zip(local_grad, updated_para_list_detector)))
+
+            # meta-update (with query set) should be same channel with support set
+            soft_estimation_query = self.meta_detector(received_words[:, NUM_SUPP:], 'train', updated_para_list_detector)
+            loss_query = self.calc_loss(soft_estimation=soft_estimation_query,
+                                       transmitted_words=transmitted_words[:, NUM_SUPP:])
+            meta_grad = torch.autograd.grad(loss_query, para_list_detector, create_graph=False)
+
+            ind_param = 0
+            for param in self.detector.parameters():
+                param.grad = None # zero_grad
+                param.grad = meta_grad[ind_param]
+                ind_param += 1
+
+            self.optimizer.step()
+
+            if minibatch % self.print_every_n_train_minibatches == 0:
+                # evaluate performance
+                ser = self.single_eval(snr, gamma)
+                print(f'Minibatch {minibatch}, Loss before adaptation {float(loss_supp)}, Loss after adaptation {float(loss_query)}, ser - {ser}')
+                # save best weights
+                if ser < best_ser:
+                    self.save_weights(float(loss_query), snr, gamma)
+                    best_ser = ser
+                if self.early_stopping_mode and self.es.step(ser):
+                    break
 
     def train(self):
         """

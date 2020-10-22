@@ -1,5 +1,6 @@
 from typing import Tuple, Union
 from python_code.detectors.VNET.vnet_detector import VNETDetector
+from python_code.detectors.VNET.meta_vnet_detector import META_VNETDetector
 from python_code.ecc.rs_main import decode, encode
 from python_code.utils.metrics import calculate_error_rates
 from python_code.utils.trellis_utils import calculate_states
@@ -34,6 +35,8 @@ class VNETTrainer(Trainer):
         Loads the ViterbiNet detector
         """
         self.detector = VNETDetector(n_states=self.n_states,
+                                     transmission_lengths=self.transmission_lengths)
+        self.meta_detector = META_VNETDetector(n_states=self.n_states,
                                      transmission_lengths=self.transmission_lengths)
 
     def load_weights(self, snr: float, gamma: float):
