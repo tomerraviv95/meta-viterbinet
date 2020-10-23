@@ -257,7 +257,7 @@ class Trainer(object):
         return ser_total
 
     def meta_train(self):
-        # batches loop
+        # initialize weights and loss
         for snr in self.snr_range['train']:
             for gamma in self.gamma_range:
                 print(f'SNR - {snr}, Gamma - {gamma}')
@@ -265,40 +265,29 @@ class Trainer(object):
                 self.initialize_detector()
                 self.deep_learning_setup()
                 best_ser = math.inf
-
                 # draw words
                 # at each minibatch, use different channel
                 transmitted_words, received_words = self.channel_dataset['meta_train'].__getitem__(snr_list=[snr],
                                                                                                    gamma=gamma)
 
-                transmitted_words_local = transmitted_words[:, :self.support_size]
-                transmitted_words_global = transmitted_words[:, self.support_size:]
-                received_words_local = received_words[:, :self.support_size]
-                received_words_global = received_words[:, self.support_size:]
-
                 for word_ind in range(self.meta_words):
-                    # local word
-                    received_word_local = received_words_local[word_ind].reshape(-1, 1)
-                    transmitted_word_local = transmitted_words_local[word_ind].reshape(-1, 1)
-
+                    current_tx = transmitted_words[word_ind].reshape(1, -1)
+                    current_rx = received_words[word_ind].reshape(1, -1)
                     # local update (with support set)
                     para_list_detector = list(map(lambda p: p[0], zip(self.detector.parameters())))
-                    soft_estimation_local = self.meta_detector(received_word_local, 'train', para_list_detector)
-                    loss_supp = self.calc_loss(soft_estimation=soft_estimation_local,
-                                               transmitted_words=transmitted_word_local)
+                    soft_estimation_supp = self.meta_detector(current_rx[:, :self.support_size], 'train',
+                                                              para_list_detector)
+                    loss_supp = self.calc_loss(soft_estimation=soft_estimation_supp,
+                                               transmitted_words=current_tx[:, :self.support_size])
                     local_grad = torch.autograd.grad(loss_supp, para_list_detector, create_graph=True)
                     updated_para_list_detector = list(
                         map(lambda p: p[1] - self.meta_lr * p[0], zip(local_grad, para_list_detector)))
 
-                    # global word
-                    received_word_global = received_words_global[word_ind].reshape(-1, 1)
-                    transmitted_word_global = transmitted_words_global[word_ind].reshape(-1, 1)
-
                     # meta-update (with query set) should be same channel with support set
-                    soft_estimation_global = self.meta_detector(received_word_global, 'train',
-                                                                updated_para_list_detector)
-                    loss_query = self.calc_loss(soft_estimation=soft_estimation_global,
-                                                transmitted_words=transmitted_word_global)
+                    soft_estimation_query = self.meta_detector(current_rx[:, self.support_size:], 'train',
+                                                               updated_para_list_detector)
+                    loss_query = self.calc_loss(soft_estimation=soft_estimation_query,
+                                                transmitted_words=current_tx[:, self.support_size:])
                     meta_grad = torch.autograd.grad(loss_query, para_list_detector, create_graph=False)
 
                     ind_param = 0

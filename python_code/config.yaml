@@ -10,8 +10,8 @@ n_symbols: 8
 memory_length: 4
 channel_type: 'ISI_AWGN' #'ISI_AWGN','Poisson'
 noisy_est_var: 0 # 0, 0.1 for ISI_AWGN, 0.08 for Poisson
-fading_in_channel: True
-fading_in_decoder: True
+fading_in_channel: False
+fading_in_decoder: False
 
 # gamma values
 gamma_start: 0.2
@@ -19,16 +19,16 @@ gamma_end: 0.2
 gamma_num: 1
 
 # validation hyperparameters
-val_block_length: 120
+val_block_length: 1000
 val_SNR_start: 10
 val_SNR_end: 10
 val_SNR_step: 2
-val_words: 200
+val_words: 5
 eval_mode: 'aggregated' # 'aggregated','by_word'
 
 # train hyperparameters
-train_block_length: 1000
-train_minibatch_num: 5
+train_block_length: 5000
+train_minibatch_num: 200
 train_minibatch_size: 100
 train_SNR_start: 10
 train_SNR_end: 10
@@ -38,13 +38,13 @@ loss_type: 'CrossEntropy' # 'BCE','CrossEntropy','MSE'
 print_every_n_train_minibatches: 10
 optimizer_type: 'Adam' # 'Adam','RMSprop','SGD'
 early_stopping_mode: False # True, False
-self_supervised: True
+self_supervised: False
 
 # seed
 noise_seed: 3450002
 word_seed: 7860002
 
 # meta
-meta_words: 500
-meta_lr: 0.001
-support_size: 120
+meta_words: 200
+meta_lr: 0.01
+support_size: 1000
