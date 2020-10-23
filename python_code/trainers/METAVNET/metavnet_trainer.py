@@ -79,7 +79,6 @@ class METAVNETTrainer(Trainer):
     def online_training(self, snr: float, gamma: float) -> Union[float, np.ndarray]:
         self.check_eval_mode()
         self.load_weights(snr, gamma)
-        self.deep_learning_setup()
         # draw words of given gamma for all snrs
         transmitted_words, received_words = self.channel_dataset['val'].__getitem__(snr_list=[snr], gamma=gamma)
         # self-supervised loop
@@ -105,6 +104,8 @@ class METAVNETTrainer(Trainer):
             print('*' * 20)
             print(f'current: {count, ser, errors_num}')
 
+            self.load_weights(snr, gamma)
+            self.deep_learning_setup()
             if ser <= SER_THRESH:
                 # run training loops
                 for i in range(SELF_SUPERVISED_ITERATIONS):
