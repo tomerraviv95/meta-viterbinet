@@ -1,4 +1,5 @@
 from typing import Union
+from python_code.detectors.METAVNET.meta_vnet_detector import META_VNETDetector
 from python_code.detectors.VNET.vnet_detector import VNETDetector
 from python_code.ecc.rs_main import decode, encode
 from python_code.utils.metrics import calculate_error_rates
@@ -13,7 +14,7 @@ SER_THRESH = 0.02
 SELF_SUPERVISED_ITERATIONS = 500
 
 
-class VNETTrainer(Trainer):
+class METAVNETTrainer(Trainer):
     """
     Trainer for the ViterbiNet model.
     """
@@ -35,6 +36,8 @@ class VNETTrainer(Trainer):
         """
         self.detector = VNETDetector(n_states=self.n_states,
                                      transmission_lengths=self.transmission_lengths)
+        self.meta_detector = META_VNETDetector(n_states=self.n_states,
+                                               transmission_lengths=self.transmission_lengths)
 
     def load_weights(self, snr: float, gamma: float):
         """
@@ -75,6 +78,7 @@ class VNETTrainer(Trainer):
 
     def online_training(self, snr: float, gamma: float) -> Union[float, np.ndarray]:
         self.check_eval_mode()
+        self.load_weights(snr, gamma)
         self.deep_learning_setup()
         # draw words of given gamma for all snrs
         transmitted_words, received_words = self.channel_dataset['val'].__getitem__(snr_list=[snr], gamma=gamma)
@@ -127,14 +131,13 @@ class VNETTrainer(Trainer):
         if self.eval_mode == 'by_word' and self.self_supervised:
             snr = self.snr_range['val'][0]
             gamma = self.gamma_range[0]
-            self.load_weights(snr, gamma)
             return self.online_training(snr, gamma)
         else:
             return super().evaluate()
 
 
 if __name__ == '__main__':
-    dec = VNETTrainer()
-    dec.train()
+    dec = METAVNETTrainer()
+    dec.meta_train()
     # dec.evaluate()
     # dec.count_parameters()

@@ -27,9 +27,9 @@ class META_VNETDetector(nn.Module):
         # compute priors based on input list of NN paramters
         x = y.reshape(-1, 1)
         x = F.linear(x, var[0], var[1])
-        x = nn.Sigmoid(x)
+        x = torch.sigmoid(x)
         x = F.linear(x, var[2], var[3])
-        x = nn.ReLU()
+        x = nn.functional.relu(x)
         x = F.linear(x, var[4], var[5])
         priors = x.reshape(y.shape[0], y.shape[1], self.n_states)
 
