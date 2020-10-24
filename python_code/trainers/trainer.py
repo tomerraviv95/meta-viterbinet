@@ -277,6 +277,7 @@ class Trainer(object):
                         even_idx]
                     query_transmitted_words, query_received_words = transmitted_words[odd_idx], received_words[odd_idx]
                     loss_supp, loss_query = math.inf, math.inf
+
                     for word_ind in range(self.meta_words // 2):
                         support_rx = support_received_words[word_ind].reshape(1, -1)
                         support_tx = support_transmitted_words[word_ind].reshape(1, -1)
