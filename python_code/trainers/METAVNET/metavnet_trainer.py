@@ -61,8 +61,8 @@ class METAVNETTrainer(Trainer):
         :return: loss value
         """
         gt_states = calculate_states(self.memory_length, transmitted_words)
-        gt_states_batch, input_batch = self.select_batch(gt_states, soft_estimation.reshape(-1, self.n_states))
-        loss = self.criterion(input=input_batch, target=gt_states_batch)
+        # gt_states_batch, input_batch = self.select_batch(gt_states, soft_estimation.reshape(-1, self.n_states))
+        loss = self.criterion(input=soft_estimation.reshape(-1, self.n_states), target=gt_states)
         return loss
 
     def single_eval(self, snr: float, gamma: float) -> float:
@@ -85,6 +85,8 @@ class METAVNETTrainer(Trainer):
         total_ser = 0
         ser_by_word = np.zeros(transmitted_words.shape[0])
         for count, (transmitted_word, received_word) in enumerate(zip(transmitted_words, received_words)):
+            if count <= 120:
+                continue
             transmitted_word, received_word = transmitted_word.reshape(1, -1), received_word.reshape(1, -1)
 
             # detect
@@ -104,6 +106,9 @@ class METAVNETTrainer(Trainer):
             print('*' * 20)
             print(f'current: {count, ser, errors_num}')
 
+            if count == 129:
+                j=1
+
             self.load_weights(snr, gamma)
             self.deep_learning_setup()
             if ser <= SER_THRESH:
@@ -120,9 +125,7 @@ class METAVNETTrainer(Trainer):
                 print(f'Self-supervised: {count + 1}/{transmitted_words.shape[0]}, SER {total_ser / (count + 1)}')
         total_ser /= transmitted_words.shape[0]
         print(f'Final ser: {total_ser}')
-        if self.eval_mode == 'by_word':
-            return ser_by_word
-        return total_ser
+        return ser_by_word
 
     def evaluate(self) -> np.ndarray:
         """
@@ -139,6 +142,6 @@ class METAVNETTrainer(Trainer):
 
 if __name__ == '__main__':
     dec = METAVNETTrainer()
-    dec.meta_train()
-    # dec.evaluate()
+    # dec.meta_train()
+    dec.evaluate()
     # dec.count_parameters()

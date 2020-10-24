@@ -265,50 +265,56 @@ class Trainer(object):
                 self.initialize_detector()
                 self.deep_learning_setup()
                 best_ser = math.inf
-                # draw words
-                # at each minibatch, use different channel
-                transmitted_words, received_words = self.channel_dataset['meta_train'].__getitem__(snr_list=[snr],
-                                                                                                   gamma=gamma)
+                for minibatch in range(1, self.train_minibatch_num + 1):
+                    # draw words
+                    # at each minibatch, use different channel
+                    support_transmitted_words, support_received_words = self.channel_dataset['meta_train'].__getitem__(
+                        snr_list=[snr],
+                        gamma=gamma)
+                    query_transmitted_words, query_received_words = self.channel_dataset['meta_train'].__getitem__(
+                        snr_list=[snr],
+                        gamma=gamma)
+                    loss_supp, loss_query = math.inf, math.inf
+                    for word_ind in range(self.meta_words):
+                        support_rx = support_received_words[word_ind].reshape(1, -1)
+                        support_tx = support_transmitted_words[word_ind].reshape(1, -1)
 
-                for word_ind in range(self.meta_words):
-                    current_tx = transmitted_words[word_ind].reshape(1, -1)
-                    current_rx = received_words[word_ind].reshape(1, -1)
-                    # local update (with support set)
-                    para_list_detector = list(map(lambda p: p[0], zip(self.detector.parameters())))
-                    soft_estimation_supp = self.meta_detector(current_rx[:, :self.support_size], 'train',
-                                                              para_list_detector)
-                    loss_supp = self.calc_loss(soft_estimation=soft_estimation_supp,
-                                               transmitted_words=current_tx[:, :self.support_size])
-                    local_grad = torch.autograd.grad(loss_supp, para_list_detector, create_graph=True)
-                    updated_para_list_detector = list(
-                        map(lambda p: p[1] - self.meta_lr * p[0], zip(local_grad, para_list_detector)))
+                        # local update (with support set)
+                        para_list_detector = list(map(lambda p: p[0], zip(self.detector.parameters())))
+                        soft_estimation_supp = self.meta_detector(support_rx, 'train',
+                                                                  para_list_detector)
+                        loss_supp = self.calc_loss(soft_estimation=soft_estimation_supp,
+                                                   transmitted_words=support_tx)
+                        local_grad = torch.autograd.grad(loss_supp, para_list_detector, create_graph=False)
+                        updated_para_list_detector = list(
+                            map(lambda p: p[1] - self.meta_lr * p[0], zip(local_grad, para_list_detector)))
 
-                    # meta-update (with query set) should be same channel with support set
-                    soft_estimation_query = self.meta_detector(current_rx[:, self.support_size:], 'train',
-                                                               updated_para_list_detector)
-                    loss_query = self.calc_loss(soft_estimation=soft_estimation_query,
-                                                transmitted_words=current_tx[:, self.support_size:])
-                    meta_grad = torch.autograd.grad(loss_query, para_list_detector, create_graph=False)
+                        query_rx = query_received_words[word_ind].reshape(1, -1)
+                        query_tx = query_transmitted_words[word_ind].reshape(1, -1)
+                        # meta-update (with query set) should be same channel with support set
+                        soft_estimation_query = self.meta_detector(query_rx, 'train',
+                                                                   updated_para_list_detector)
+                        loss_query = self.calc_loss(soft_estimation=soft_estimation_query,
+                                                    transmitted_words=query_tx)
+                        meta_grad = torch.autograd.grad(loss_query, para_list_detector, create_graph=False)
 
-                    ind_param = 0
-                    for param in self.detector.parameters():
-                        param.grad = None  # zero_grad
-                        param.grad = meta_grad[ind_param]
-                        ind_param += 1
+                        ind_param = 0
+                        for param in self.detector.parameters():
+                            param.grad = None  # zero_grad
+                            param.grad = meta_grad[ind_param]
+                            ind_param += 1
 
-                    self.optimizer.step()
+                        self.optimizer.step()
 
-                    if word_ind % self.print_every_n_train_minibatches == 0:
-                        # evaluate performance
-                        ser = self.single_eval(snr, gamma)
-                        print(f'Minibatch {word_ind}, ser - {ser}')
-                        print(f'Loss before adaptation {float(loss_supp)}, Loss after adaptation {float(loss_query)}')
-                        # save best weights
-                        if ser < best_ser:
-                            self.save_weights(float(loss_query), snr, gamma)
-                            best_ser = ser
-                        if self.early_stopping_mode and self.es.step(ser):
-                            break
+                    # evaluate performance
+                    ser = self.single_eval(snr, gamma)
+                    print(f'Minibatch {minibatch}, ser - {ser}')
+                    # save best weights
+                    if ser < best_ser:
+                        self.save_weights(float(loss_query), snr, gamma)
+                        best_ser = ser
+                    if self.early_stopping_mode and self.es.step(ser):
+                        break
 
     def train(self):
         """
@@ -357,7 +363,6 @@ class Trainer(object):
         if torch.sum(torch.isnan(loss)):
             print('Nan value')
         current_loss = loss.item()
-        # print([param.grad for param in self.detector.parameters()])
         # back propagation
         for param in self.detector.parameters():
             param.grad = None

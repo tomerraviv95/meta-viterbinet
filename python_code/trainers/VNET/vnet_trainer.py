@@ -115,16 +115,14 @@ class VNETTrainer(Trainer):
                 print(f'Self-supervised: {count + 1}/{transmitted_words.shape[0]}, SER {total_ser / (count + 1)}')
         total_ser /= transmitted_words.shape[0]
         print(f'Final ser: {total_ser}')
-        if self.eval_mode == 'by_word':
-            return ser_by_word
-        return total_ser
+        return ser_by_word
 
     def evaluate(self) -> np.ndarray:
         """
         Evaluation either happens in a point aggregation way, or in a word-by-word fashion
         """
         # eval with training
-        if self.eval_mode == 'by_word' and self.self_supervised:
+        if self.self_supervised:
             snr = self.snr_range['val'][0]
             gamma = self.gamma_range[0]
             self.load_weights(snr, gamma)
@@ -135,6 +133,6 @@ class VNETTrainer(Trainer):
 
 if __name__ == '__main__':
     dec = VNETTrainer()
-    dec.train()
-    # dec.evaluate()
+    # dec.train()
+    dec.evaluate()
     # dec.count_parameters()
