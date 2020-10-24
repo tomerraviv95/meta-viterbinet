@@ -286,7 +286,9 @@ class Trainer(object):
                                                                       para_list_detector)
                             loss_supp = self.calc_loss(soft_estimation=soft_estimation_supp,
                                                        transmitted_words=support_tx)
-                            local_grad = torch.autograd.grad(loss_supp, para_list_detector, create_graph=False)
+                            #local_grad = torch.autograd.grad(loss_supp, para_list_detector, create_graph=False)
+                            local_grad = torch.autograd.grad(loss_supp, para_list_detector, create_graph=True) # if create_graph=False, it will become first-order MAML which is an approximated version of MAML (here MAML is the scheme that I chose for meta-learning :))
+
                             updated_para_list_detector = list(
                                 map(lambda p: p[1] - self.meta_lr * p[0], zip(local_grad, para_list_detector)))
 
@@ -297,7 +299,7 @@ class Trainer(object):
                                                                        updated_para_list_detector)
                             loss_query = self.calc_loss(soft_estimation=soft_estimation_query,
                                                         transmitted_words=query_tx)
-                            meta_grad = torch.autograd.grad(loss_query, para_list_detector, create_graph=False)
+                            meta_grad = torch.autograd.grad(loss_query, para_list_detector, create_graph=False) # here it is fine to have create_graph=False since we are not taking any further derivatives w.r.t meta_grad
 
                             ind_param = 0
                             for param in self.detector.parameters():
