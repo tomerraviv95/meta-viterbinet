@@ -1,5 +1,5 @@
 # general
-run_name: 'meta_training_120_rand_ind'
+run_name: 'meta_training_360'
 
 # coding parameters
 channel_blocks: 1
@@ -19,7 +19,7 @@ gamma_end: 0.2
 gamma_num: 1
 
 # validation hyperparameters
-val_block_length: 120
+val_block_length: 360
 val_SNR_start: 12
 val_SNR_end: 12
 val_SNR_step: 2
@@ -27,9 +27,9 @@ val_words: 100
 eval_mode: 'aggregated' # 'aggregated','by_word'
 
 # train hyperparameters
-train_block_length: 120
+train_block_length: 360
 train_minibatch_num: 50
-train_minibatch_size: 120
+train_minibatch_size: 1000
 train_SNR_start: 12
 train_SNR_end: 12
 train_SNR_step: 2
@@ -47,4 +47,4 @@ word_seed: 7860002
 # meta
 meta_words: 200
 meta_lr: 0.001
-support_size: 120
+support_size: 1000

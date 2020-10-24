@@ -91,7 +91,7 @@ def add_viterbi_failure(all_curves):
     n_symbols = [1, 2, 3, 4, 5, 6, 7, 8]
 
     val_block_lengths = [120]
-    n_symbols = [2]
+    n_symbols = [4]
     for val_block_length in val_block_lengths:
         for n_symbol in n_symbols:
             print(val_block_length, n_symbol)
@@ -110,7 +110,7 @@ def add_rnn_failure(all_curves):
     n_symbols = [1, 2, 3, 4, 5, 6, 7, 8]
 
     val_block_lengths = [120]
-    n_symbols = [2]
+    n_symbols = [4]
     for val_block_length in val_block_lengths:
         for n_symbol in n_symbols:
             print(val_block_length, n_symbol)
@@ -125,8 +125,11 @@ def add_rnn_failure(all_curves):
 
 
 def add_metaviterbinet(all_curves):
-    val_block_lengths = [120]
-    n_symbols = [2]
+    val_block_lengths = [40, 80, 120, 160, 200, 240, 280, 320, 360, 400]
+    n_symbols = [1, 2, 3, 4, 5, 6, 7, 8]
+
+    # val_block_lengths = [120]
+    # n_symbols = [4]
     for val_block_length in val_block_lengths:
         for n_symbol in n_symbols:
             print(val_block_length, n_symbol)
@@ -134,7 +137,7 @@ def add_metaviterbinet(all_curves):
                                   noisy_est_var=0, fading_in_channel=True, fading_in_decoder=False, use_ecc=True,
                                   gamma_start=0.2, gamma_end=0.2, gamma_num=1, channel_type='ISI_AWGN',
                                   self_supervised=True, val_words=100, eval_mode='by_word', n_symbols=n_symbol,
-                                  weights_dir=os.path.join(WEIGHTS_DIR, 'meta_training_120'))
+                                  weights_dir=os.path.join(WEIGHTS_DIR, f'meta_training_{val_block_length}'))
             method_name = f'MetaViterbiNet - Block Length {val_block_length}, Error symbols {n_symbol}'
             ser = get_ser_plot(dec, run_over=run_over, method_name=method_name)
             all_curves.append((ser, method_name, val_block_length, n_symbol))
@@ -143,8 +146,8 @@ def add_metaviterbinet(all_curves):
 if __name__ == '__main__':
     run_over = False
     all_curves = []
-    add_viterbi_failure(all_curves)
-    add_rnn_failure(all_curves)
+    # add_viterbi_failure(all_curves)
+    # add_rnn_failure(all_curves)
     add_metaviterbinet(all_curves)
-    plot_all_curves(all_curves)
+    # plot_all_curves(all_curves)
     # plot_schematic(all_curves)
