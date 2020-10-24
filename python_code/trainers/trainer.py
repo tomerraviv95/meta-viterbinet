@@ -193,10 +193,9 @@ class Trainer(object):
                                        fading_in_channel=self.fading_in_channel,
                                        fading_in_decoder=self.fading_in_decoder,
                                        phase=phase)
-            for phase in ['train', 'val', 'meta_train', 'meta_val']}
+            for phase in ['train', 'val']}
         self.dataloaders = {phase: torch.utils.data.DataLoader(self.channel_dataset[phase])
-                            for phase in ['train', 'val', 'meta_train',
-                                          'meta_val']}
+                            for phase in ['train', 'val']}
 
     def single_eval(self, snr: float, gamma: float) -> float:
         """
