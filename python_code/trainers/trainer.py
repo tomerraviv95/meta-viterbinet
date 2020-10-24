@@ -288,6 +288,7 @@ class Trainer(object):
                                                                   para_list_detector)
                         loss_supp = self.calc_loss(soft_estimation=soft_estimation_supp,
                                                    transmitted_words=support_tx)
+
                         # set create_graph to True for MAML, False for FO-MAML
                         local_grad = torch.autograd.grad(loss_supp, para_list_detector, create_graph=False)
                         updated_para_list_detector = list(
