@@ -11,12 +11,12 @@ N_CLASSES = 2
 
 
 # Directional recurrent neural network (many-to-one)
-class META_RNNDetector(nn.Module):
+class MetaRNNDetector(nn.Module):
     """
     This class implements a sliding RNN detector
     """
     def __init__(self):
-        super(META_RNNDetector, self).__init__()
+        super(MetaRNNDetector, self).__init__()
         self.initialize_rnn()
 
     def initialize_rnn(self):
