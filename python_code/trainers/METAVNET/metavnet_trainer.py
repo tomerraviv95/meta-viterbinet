@@ -137,5 +137,5 @@ class METAVNETTrainer(Trainer):
 
 if __name__ == '__main__':
     dec = METAVNETTrainer()
-    # dec.meta_train()
-    dec.evaluate()
+    dec.meta_train()
+    # dec.evaluate()

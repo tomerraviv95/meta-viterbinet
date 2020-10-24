@@ -1,4 +1,5 @@
 import concurrent.futures
+import random
 
 import numpy as np
 import torch
@@ -56,7 +57,10 @@ class ChannelModelDataset(Dataset):
             database = []
         b_full = np.empty((0, self.block_length))
         y_full = np.empty((0, self.transmission_length))
-        index = 0
+        if self.phase == 'val':
+            index = 0
+        else:
+            index = random.randint(0, 1e6)
         # accumulate words until reaches desired number
         while y_full.shape[0] < self.words:
             # generate word
@@ -86,7 +90,7 @@ class ChannelModelDataset(Dataset):
                         snr)
             elif self.phase == 'meta_train':
                 y = np.zeros(b.shape)
-                assert self.channel_blocks == 1 # only one channel for one local update
+                assert self.channel_blocks == 1  # only one channel for one local update
                 block_length = self.transmission_length // self.channel_blocks
                 for channel_block in range(self.channel_blocks):
                     block_start = channel_block * block_length

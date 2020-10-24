@@ -91,7 +91,7 @@ def add_viterbi_failure(all_curves):
     n_symbols = [1, 2, 3, 4, 5, 6, 7, 8]
 
     val_block_lengths = [120]
-    n_symbols = [4]
+    n_symbols = [2]
     for val_block_length in val_block_lengths:
         for n_symbol in n_symbols:
             print(val_block_length, n_symbol)
@@ -110,7 +110,7 @@ def add_rnn_failure(all_curves):
     n_symbols = [1, 2, 3, 4, 5, 6, 7, 8]
 
     val_block_lengths = [120]
-    n_symbols = [4]
+    n_symbols = [2]
     for val_block_length in val_block_lengths:
         for n_symbol in n_symbols:
             print(val_block_length, n_symbol)
@@ -126,7 +126,7 @@ def add_rnn_failure(all_curves):
 
 def add_metaviterbinet(all_curves):
     val_block_lengths = [120]
-    n_symbols = [4]
+    n_symbols = [2]
     for val_block_length in val_block_lengths:
         for n_symbol in n_symbols:
             print(val_block_length, n_symbol)
