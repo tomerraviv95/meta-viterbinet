@@ -276,35 +276,36 @@ class Trainer(object):
                         gamma=gamma)
                     loss_supp, loss_query = math.inf, math.inf
                     for word_ind in range(self.meta_words):
-                        support_rx = support_received_words[word_ind].reshape(1, -1)
-                        support_tx = support_transmitted_words[word_ind].reshape(1, -1)
+                        if word_ind % 5 == 0:
+                            support_rx = support_received_words[word_ind].reshape(1, -1)
+                            support_tx = support_transmitted_words[word_ind].reshape(1, -1)
 
-                        # local update (with support set)
-                        para_list_detector = list(map(lambda p: p[0], zip(self.detector.parameters())))
-                        soft_estimation_supp = self.meta_detector(support_rx, 'train',
-                                                                  para_list_detector)
-                        loss_supp = self.calc_loss(soft_estimation=soft_estimation_supp,
-                                                   transmitted_words=support_tx)
-                        local_grad = torch.autograd.grad(loss_supp, para_list_detector, create_graph=False)
-                        updated_para_list_detector = list(
-                            map(lambda p: p[1] - self.meta_lr * p[0], zip(local_grad, para_list_detector)))
+                            # local update (with support set)
+                            para_list_detector = list(map(lambda p: p[0], zip(self.detector.parameters())))
+                            soft_estimation_supp = self.meta_detector(support_rx, 'train',
+                                                                      para_list_detector)
+                            loss_supp = self.calc_loss(soft_estimation=soft_estimation_supp,
+                                                       transmitted_words=support_tx)
+                            local_grad = torch.autograd.grad(loss_supp, para_list_detector, create_graph=False)
+                            updated_para_list_detector = list(
+                                map(lambda p: p[1] - self.meta_lr * p[0], zip(local_grad, para_list_detector)))
 
-                        query_rx = query_received_words[word_ind].reshape(1, -1)
-                        query_tx = query_transmitted_words[word_ind].reshape(1, -1)
-                        # meta-update (with query set) should be same channel with support set
-                        soft_estimation_query = self.meta_detector(query_rx, 'train',
-                                                                   updated_para_list_detector)
-                        loss_query = self.calc_loss(soft_estimation=soft_estimation_query,
-                                                    transmitted_words=query_tx)
-                        meta_grad = torch.autograd.grad(loss_query, para_list_detector, create_graph=False)
+                            query_rx = query_received_words[word_ind].reshape(1, -1)
+                            query_tx = query_transmitted_words[word_ind].reshape(1, -1)
+                            # meta-update (with query set) should be same channel with support set
+                            soft_estimation_query = self.meta_detector(query_rx, 'train',
+                                                                       updated_para_list_detector)
+                            loss_query = self.calc_loss(soft_estimation=soft_estimation_query,
+                                                        transmitted_words=query_tx)
+                            meta_grad = torch.autograd.grad(loss_query, para_list_detector, create_graph=False)
 
-                        ind_param = 0
-                        for param in self.detector.parameters():
-                            param.grad = None  # zero_grad
-                            param.grad = meta_grad[ind_param]
-                            ind_param += 1
+                            ind_param = 0
+                            for param in self.detector.parameters():
+                                param.grad = None  # zero_grad
+                                param.grad = meta_grad[ind_param]
+                                ind_param += 1
 
-                        self.optimizer.step()
+                            self.optimizer.step()
 
                     # evaluate performance
                     ser = self.single_eval(snr, gamma)

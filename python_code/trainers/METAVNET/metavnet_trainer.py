@@ -28,7 +28,7 @@ class METAVNETTrainer(Trainer):
         else:
             channel_state = ', perfect CSI'
 
-        return 'ViterbiNet' + channel_state
+        return 'MetaViterbiNet' + channel_state
 
     def initialize_detector(self):
         """
@@ -85,8 +85,6 @@ class METAVNETTrainer(Trainer):
         total_ser = 0
         ser_by_word = np.zeros(transmitted_words.shape[0])
         for count, (transmitted_word, received_word) in enumerate(zip(transmitted_words, received_words)):
-            if count <= 120:
-                continue
             transmitted_word, received_word = transmitted_word.reshape(1, -1), received_word.reshape(1, -1)
 
             # detect
@@ -105,9 +103,6 @@ class METAVNETTrainer(Trainer):
             errors_num = torch.sum(torch.abs(encoded_word - detected_word)).item()
             print('*' * 20)
             print(f'current: {count, ser, errors_num}')
-
-            if count == 129:
-                j=1
 
             self.load_weights(snr, gamma)
             self.deep_learning_setup()
@@ -144,4 +139,3 @@ if __name__ == '__main__':
     dec = METAVNETTrainer()
     # dec.meta_train()
     dec.evaluate()
-    # dec.count_parameters()
