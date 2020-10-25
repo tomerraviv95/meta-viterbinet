@@ -1,7 +1,7 @@
-from typing import Tuple
+from typing import Tuple, Union
 
 from python_code.channel.channel_dataset import ChannelModelDataset
-from python_code.ecc.rs_main import decode
+from python_code.ecc.rs_main import decode, encode
 from python_code.utils.early_stopping import EarlyStopping
 from python_code.utils.metrics import calculate_error_rates
 from dir_definitions import CONFIG_PATH, WEIGHTS_DIR
@@ -54,6 +54,7 @@ class Trainer(object):
         self.train_block_length = None
         self.train_minibatch_num = None
         self.train_minibatch_size = None
+        self.train_words = None
         self.train_SNR_start = None
         self.train_SNR_end = None
         self.train_SNR_step = None
@@ -181,7 +182,7 @@ class Trainer(object):
         self.channel_blocks_per_phase = {'train': self.channel_blocks,
                                          'val': self.channel_blocks,
                                          'meta_train': self.channel_blocks}
-        self.words_per_phase = {'train': 1, 'val': self.val_words, 'meta_train': self.meta_words}
+        self.words_per_phase = {'train': self.train_words, 'val': self.val_words, 'meta_train': self.meta_words}
         self.block_lengths = {'train': self.train_block_length,
                               'val': self.val_block_length,
                               'meta_train': self.train_block_length}
@@ -208,7 +209,7 @@ class Trainer(object):
         self.dataloaders = {phase: torch.utils.data.DataLoader(self.channel_dataset[phase])
                             for phase in ['train', 'val', 'meta_train']}
 
-    def single_eval(self, snr: float, gamma: float) -> float:
+    def single_eval_at_point(self, snr: float, gamma: float) -> float:
         """
         Evaluation at a single snr.
         :param snr: indice of snr in the snrs vector
@@ -228,6 +229,17 @@ class Trainer(object):
 
         return ser
 
+    def single_eval(self, snr: float, gamma: float) -> float:
+        """
+        ViterbiNet single eval - either a normal evaluation or on-the-fly online training
+        """
+        # eval with training
+        if self.self_supervised:
+            return self.eval_by_word(snr, gamma)
+        else:
+            # a normal evaluation, return evaluation of parent class
+            return self.single_eval_at_point(snr, gamma)
+
     def gamma_eval(self, gamma: float) -> np.ndarray:
         """
         Evaluation at a single gamma value.
@@ -241,7 +253,7 @@ class Trainer(object):
 
         return ser_total
 
-    def evaluate(self) -> np.ndarray:
+    def evaluate_at_point(self) -> np.ndarray:
         """
         Monte-Carlo simulation over validation SNRs range
         :return: ber, fer, iterations vectors
@@ -255,6 +267,59 @@ class Trainer(object):
                 print(f'Done. time: {time() - start}, ser: {ser_total / (gamma_count + 1)}')
         ser_total /= self.gamma_num
         return ser_total
+
+    def evaluate(self) -> np.ndarray:
+        """
+        Evaluation either happens in a point aggregation way, or in a word-by-word fashion
+        """
+        # eval with training
+        self.check_eval_mode()
+        if self.eval_mode == 'by_word':
+            snr = self.snr_range['val'][0]
+            gamma = self.gamma_range[0]
+            self.load_weights(snr, gamma)
+            return self.eval_by_word(snr, gamma)
+        else:
+            return self.evaluate_at_point()
+
+    def eval_by_word(self, snr: float, gamma: float) -> Union[float, np.ndarray]:
+        if self.self_supervised:
+            self.deep_learning_setup()
+        # draw words of given gamma for all snrs
+        transmitted_words, received_words = self.channel_dataset['val'].__getitem__(snr_list=[snr], gamma=gamma)
+        # self-supervised loop
+        total_ser = 0
+        ser_by_word = np.zeros(transmitted_words.shape[0])
+        for count, (transmitted_word, received_word) in enumerate(zip(transmitted_words, received_words)):
+            transmitted_word, received_word = transmitted_word.reshape(1, -1), received_word.reshape(1, -1)
+
+            # detect
+            detected_word = self.detector(received_word, 'val')
+
+            # decode
+            decoded_word = [decode(detected_word, self.n_symbols) for detected_word in detected_word.cpu().numpy()]
+            decoded_word = torch.Tensor(decoded_word).to(device)
+
+            # calculate accuracy
+            ser, fer, err_indices = calculate_error_rates(decoded_word, transmitted_word)
+
+            # encode word again
+            decoded_word_array = decoded_word.int().cpu().numpy()
+            encoded_word = torch.Tensor(encode(decoded_word_array, self.n_symbols).reshape(1, -1)).to(device)
+            errors_num = torch.sum(torch.abs(encoded_word - detected_word)).item()
+            print('*' * 20)
+            print(f'current: {count, ser, errors_num}')
+
+            if self.self_supervised:
+                self.online_training(detected_word, encoded_word, received_word, ser)
+
+            total_ser += ser
+            ser_by_word[count] = ser
+            if (count + 1) % 10 == 0:
+                print(f'Self-supervised: {count + 1}/{transmitted_words.shape[0]}, SER {total_ser / (count + 1)}')
+        total_ser /= transmitted_words.shape[0]
+        print(f'Final ser: {total_ser}')
+        return ser_by_word
 
     def meta_train(self):
         # initialize weights and loss
@@ -279,6 +344,7 @@ class Trainer(object):
                     loss_supp, loss_query = math.inf, math.inf
 
                     for word_ind in range(self.meta_words // 2):
+                        # support words
                         support_rx = support_received_words[word_ind].reshape(1, -1)
                         support_tx = support_transmitted_words[word_ind].reshape(1, -1)
 
@@ -294,8 +360,10 @@ class Trainer(object):
                         updated_para_list_detector = list(
                             map(lambda p: p[1] - self.meta_lr * p[0], zip(local_grad, para_list_detector)))
 
+                        # query words
                         query_rx = query_received_words[word_ind].reshape(1, -1)
                         query_tx = query_transmitted_words[word_ind].reshape(1, -1)
+
                         # meta-update (with query set) should be same channel with support set
                         soft_estimation_query = self.meta_detector(query_rx, 'train',
                                                                    updated_para_list_detector)
@@ -342,10 +410,10 @@ class Trainer(object):
                     transmitted_words, received_words = self.channel_dataset['train'].__getitem__(snr_list=[snr],
                                                                                                   gamma=gamma)
                     # run training loops
-                    for i in range(STEPS_NUM):
+                    for i in range(self.train_words):
                         # pass through detector
-                        soft_estimation = self.detector(received_words, 'train')
-                        current_loss = self.run_train_loop(soft_estimation, transmitted_words)
+                        soft_estimation = self.detector(received_words[i].reshape(1, -1), 'train')
+                        current_loss = self.run_train_loop(soft_estimation, transmitted_words[i].reshape(1, -1))
 
                     if minibatch % self.print_every_n_train_minibatches == 0:
                         # evaluate performance

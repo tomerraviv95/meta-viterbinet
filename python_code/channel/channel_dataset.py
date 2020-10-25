@@ -75,27 +75,13 @@ class ChannelModelDataset(Dataset):
                 h = estimate_channel(self.memory_length, gamma, fading=self.fading_in_channel, index=index)
                 y = self.transmit(padded_c, h, snr)
             # transmit - training
-            elif self.phase == 'train':
-                # if in training, each channel block goes through different h
-                y = np.zeros(b.shape)
-                block_length = self.transmission_length // self.channel_blocks
-                for channel_block in range(self.channel_blocks):
-                    block_start = channel_block * block_length
-                    block_end = (channel_block + 1) * block_length
-                    ## composite training if fading_in_decoder is True, else regular
-                    h = estimate_channel(self.memory_length, gamma, noisy_est_var=self.noisy_est_var,
-                                         fading=self.fading_in_decoder, index=3 * channel_block + 2)
-                    y[:, block_start: block_end] = self.transmit(
-                        padded_c[:, block_start: block_end + self.memory_length], h,
-                        snr)
-            elif self.phase == 'meta_train':
+            elif self.phase == 'train' or self.phase == 'meta_train':
                 y = np.zeros(b.shape)
                 assert self.channel_blocks == 1  # only one channel for one local update
                 block_length = self.transmission_length // self.channel_blocks
                 for channel_block in range(self.channel_blocks):
                     block_start = channel_block * block_length
                     block_end = (channel_block + 1) * block_length
-                    ## composite training if fading_in_decoder is True, else regular
                     h = estimate_channel(self.memory_length, gamma, noisy_est_var=self.noisy_est_var,
                                          fading=self.fading_in_decoder, index=index)
                     y[:, block_start: block_end] = self.transmit(

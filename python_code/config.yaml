@@ -1,10 +1,10 @@
 # general
-run_name: 'meta_training_360'
+run_name: 'rnn_joint_160'
 
 # coding parameters
 channel_blocks: 1
 use_ecc: False # True, False
-n_symbols: 6
+n_symbols: 4
 
 # channel
 memory_length: 4
@@ -19,17 +19,18 @@ gamma_end: 0.2
 gamma_num: 1
 
 # validation hyperparameters
-val_block_length: 360
+val_block_length: 160
 val_SNR_start: 12
 val_SNR_end: 12
 val_SNR_step: 2
-val_words: 100
+val_words: 200
 eval_mode: 'aggregated' # 'aggregated','by_word'
 
 # train hyperparameters
-train_block_length: 360
+train_block_length: 160
 train_minibatch_num: 50
-train_minibatch_size: 1000
+train_minibatch_size: 32
+train_words: 200
 train_SNR_start: 12
 train_SNR_end: 12
 train_SNR_step: 2

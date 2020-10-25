@@ -1,10 +1,12 @@
+from typing import Union
+
 from python_code.detectors.VA.va_detector import VADetector
 from python_code.utils.metrics import calculate_error_rates
 from python_code.trainers.trainer import Trainer
 import numpy as np
 import torch
 
-from python_code.ecc.rs_main import decode
+from python_code.ecc.rs_main import decode, encode
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -72,6 +74,24 @@ class VATrainer(Trainer):
 
     def train(self):
         raise NotImplementedError("No training implemented for this decoder!!!")
+
+    def eval_by_word(self, snr: float, gamma: float) -> Union[float, np.ndarray]:
+        # draw words of given gamma for all snrs
+        transmitted_words, received_words = self.channel_dataset['val'].__getitem__(snr_list=[snr], gamma=gamma)
+
+        # decode and calculate accuracy
+        detected_words = self.detector(received_words, 'val', gamma)
+
+        if self.use_ecc:
+            decoded_words = [decode(detected_word, self.n_symbols) for detected_word in detected_words.cpu().numpy()]
+            detected_words = torch.Tensor(decoded_words).to(device)
+
+        ser_by_word = np.zeros(transmitted_words.shape[0])
+        for count in range(len(self.snr_range['val'])):
+            ser, fer, err_indices = calculate_error_rates(detected_words[count].reshape(1, -1),
+                                                          transmitted_words[count].reshape(1, -1))
+            ser_by_word[count] = ser
+        return ser_by_word
 
 
 if __name__ == '__main__':
