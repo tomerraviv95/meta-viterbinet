@@ -108,7 +108,7 @@ def get_ser_plot(dec: Trainer, run_over: bool, method_name: str):
         print("calculating fresh")
         ser_total = dec.evaluate()
         save_pkl(plots_path, ser_total)
-
+    print(np.mean(ser_total))
     return ser_total
 
 

@@ -1,11 +1,6 @@
-from typing import Tuple, Union
-
 from python_code.detectors.METARNN.meta_rnn_detector import MetaRNNDetector
 from python_code.detectors.RNN.rnn_detector import RNNDetector
-from python_code.ecc.rs_main import decode, encode
-from python_code.utils.metrics import calculate_error_rates
 from python_code.trainers.trainer import Trainer
-import numpy as np
 import torch
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -56,7 +51,6 @@ class MetaRNNTrainer(Trainer):
                 soft_estimation = self.detector(received_word, 'train')
                 labels = detected_word if ser > 0 else encoded_word
                 self.run_train_loop(soft_estimation=soft_estimation, transmitted_words=labels)
-
 
 if __name__ == '__main__':
     dec = MetaRNNTrainer()

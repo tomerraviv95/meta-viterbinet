@@ -68,7 +68,6 @@ class Trainer(object):
         # meta
         self.meta_words = None
         self.meta_lr = None
-        self.support_size = None
 
         # seed
         self.noise_seed = None
@@ -311,7 +310,7 @@ class Trainer(object):
             print(f'current: {count, ser, errors_num}')
 
             if self.self_supervised:
-                self.online_training(detected_word, encoded_word, received_word, ser)
+                self.online_training(detected_word, encoded_word, gamma, received_word, ser, snr)
 
             total_ser += ser
             ser_by_word[count] = ser

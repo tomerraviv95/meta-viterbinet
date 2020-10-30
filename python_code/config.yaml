@@ -1,5 +1,5 @@
 # general
-run_name: 'rnn_joint_160'
+run_name: 'rnn_meta_training_200'
 
 # coding parameters
 channel_blocks: 1
@@ -19,7 +19,7 @@ gamma_end: 0.2
 gamma_num: 1
 
 # validation hyperparameters
-val_block_length: 160
+val_block_length: 200
 val_SNR_start: 12
 val_SNR_end: 12
 val_SNR_step: 2
@@ -27,7 +27,7 @@ val_words: 200
 eval_mode: 'aggregated' # 'aggregated','by_word'
 
 # train hyperparameters
-train_block_length: 160
+train_block_length: 200
 train_minibatch_num: 50
 train_minibatch_size: 32
 train_words: 200
@@ -48,4 +48,3 @@ word_seed: 7860002
 # meta
 meta_words: 200
 meta_lr: 0.001
-support_size: 1000
