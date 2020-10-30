@@ -22,7 +22,6 @@ class ChannelModelDataset(Dataset):
     def __init__(self, channel_type: str,
                  block_length: int,
                  transmission_length: int,
-                 channel_blocks: int,
                  words: int,
                  memory_length: int,
                  random: mtrand.RandomState,
@@ -39,7 +38,6 @@ class ChannelModelDataset(Dataset):
         self.word_rand_gen = word_rand_gen if word_rand_gen else np.random.RandomState()
         self.random = random if random else np.random.RandomState()
         self.channel_type = channel_type
-        self.channel_blocks = channel_blocks
         self.words = words
         self.memory_length = memory_length
         self.noisy_est_var = noisy_est_var
@@ -69,27 +67,12 @@ class ChannelModelDataset(Dataset):
             c = self.encoding(b).reshape(1, -1)
             # add zero bits
             padded_c = np.concatenate([c, np.zeros([c.shape[0], self.memory_length])], axis=1)
-            # transmit - validation
-            if self.phase == 'val':
-                # channel_estimate
-                h = estimate_channel(self.memory_length, gamma, fading=self.fading_in_channel, index=index)
-                y = self.transmit(padded_c, h, snr)
-            # transmit - training
-            elif self.phase == 'train' or self.phase == 'meta_train':
-                y = np.zeros(b.shape)
-                assert self.channel_blocks == 1  # only one channel for one local update
-                block_length = self.transmission_length // self.channel_blocks
-                for channel_block in range(self.channel_blocks):
-                    block_start = channel_block * block_length
-                    block_end = (channel_block + 1) * block_length
-                    h = estimate_channel(self.memory_length, gamma, noisy_est_var=self.noisy_est_var,
-                                         fading=self.fading_in_decoder, index=index)
-                    y[:, block_start: block_end] = self.transmit(
-                        padded_c[:, block_start: block_end + self.memory_length], h,
-                        snr)
-            else:
-                raise NotImplementedError("No such phase implemented!!!")
-
+            # transmit
+            h = estimate_channel(self.memory_length, gamma,
+                                 noisy_est_var=self.noisy_est_var,
+                                 fading=self.fading_in_channel if self.phase == 'val' else self.fading_in_decoder,
+                                 index=index)
+            y = self.transmit(padded_c, h, snr)
             # accumulate
             b_full = np.concatenate((b_full, b), axis=0)
             y_full = np.concatenate((y_full, y), axis=0)
@@ -122,4 +105,4 @@ class ChannelModelDataset(Dataset):
         return b, y
 
     def __len__(self):
-        return self.transmission_length * self.channel_blocks
+        return self.transmission_length
