@@ -7,9 +7,9 @@ import datetime
 import math
 import os
 from python_code.plotters.SER_plotter import get_ser_plot
-from python_code.trainers.METARNN.metarnn_trainer import MetaRNNTrainer
-from python_code.trainers.METAVNET.metavnet_trainer import METAVNETTrainer
-from python_code.trainers.RNN.rnn_trainer import RNNTrainer
+from python_code.trainers.META_LSTM.meta_lstm_trainer import MetaLSTMTrainer
+from python_code.trainers.META_VNET.metavnet_trainer import METAVNETTrainer
+from python_code.trainers.LSTM.lstm_trainer import LSTMTrainer
 from python_code.trainers.VA.va_trainer import VATrainer
 from python_code.trainers.VNET.vnet_trainer import VNETTrainer
 
@@ -27,7 +27,7 @@ mpl.rcParams['mathtext.fontset'] = 'stix'
 mpl.rcParams['font.family'] = 'STIXGeneral'
 
 COLORS_DICT = {'ViterbiNet': 'green',
-               'RNN': 'green',
+               'LSTM': 'green',
                'MetaViterbiNet': 'r',
                'Joint': 'blue',
                'JointRNN': 'blue',
@@ -35,7 +35,7 @@ COLORS_DICT = {'ViterbiNet': 'green',
                'MetaRNN': 'r'}
 
 MARKERS_DICT = {'ViterbiNet': 'd',
-               'RNN': 'd',
+               'LSTM': 'd',
                'MetaViterbiNet': '.',
                'Joint': 'x',
                'JointRNN': 'x',
@@ -43,7 +43,7 @@ MARKERS_DICT = {'ViterbiNet': 'd',
                'MetaRNN': '.'}
 
 LINESTYLES_DICT = {'ViterbiNet': 'solid',
-               'RNN': 'dotted',
+               'LSTM': 'dotted',
                'MetaViterbiNet': 'solid',
                'Joint': 'solid',
                'JointRNN': 'dotted',
@@ -51,7 +51,7 @@ LINESTYLES_DICT = {'ViterbiNet': 'solid',
                'MetaRNN': 'dotted'}
 
 METHOD_NAMES = {'ViterbiNet': 'ViterbiNet, online training',
-               'RNN': 'LSTM, online training',
+               'LSTM': 'LSTM, online training',
                'MetaViterbiNet': 'Meta-ViterbiNet',
                'Joint': 'ViterbiNet, joint training',
                'JointRNN': 'LSTM, joint training',
@@ -142,12 +142,12 @@ def add_viterbinet(all_curves, val_block_length, n_symbol):
 
 
 def add_rnn_online(all_curves, val_block_length, n_symbol):
-    dec = RNNTrainer(val_SNR_start=12, val_SNR_end=12, val_SNR_step=2, val_block_length=val_block_length,
-                     noisy_est_var=0, fading_in_channel=True, fading_in_decoder=False, use_ecc=True,
-                     gamma_start=0.2, gamma_end=0.2, gamma_num=1, channel_type='ISI_AWGN',
-                     self_supervised=True, val_words=100, eval_mode='by_word', n_symbols=n_symbol,
-                     weights_dir=os.path.join(WEIGHTS_DIR, 'rnn_gamma_0.2'))
-    method_name = f'RNN'
+    dec = LSTMTrainer(val_SNR_start=12, val_SNR_end=12, val_SNR_step=2, val_block_length=val_block_length,
+                      noisy_est_var=0, fading_in_channel=True, fading_in_decoder=False, use_ecc=True,
+                      gamma_start=0.2, gamma_end=0.2, gamma_num=1, channel_type='ISI_AWGN',
+                      self_supervised=True, val_words=100, eval_mode='by_word', n_symbols=n_symbol,
+                      weights_dir=os.path.join(WEIGHTS_DIR, 'rnn_gamma_0.2'))
+    method_name = f'LSTM'
     ser = get_ser_plot(dec, run_over=run_over,
                        method_name=method_name + f' - Block Length {val_block_length}, Error symbols {n_symbol}')
     all_curves.append((ser, method_name, val_block_length, n_symbol))
@@ -166,11 +166,11 @@ def add_metaviterbinet(all_curves, val_block_length, n_symbol):
 
 
 def add_metarnn(all_curves, val_block_length, n_symbol):
-    dec = MetaRNNTrainer(val_SNR_start=12, val_SNR_end=12, val_SNR_step=2, val_block_length=val_block_length,
-                         noisy_est_var=0, fading_in_channel=True, fading_in_decoder=False, use_ecc=True,
-                         gamma_start=0.2, gamma_end=0.2, gamma_num=1, channel_type='ISI_AWGN',
-                         self_supervised=True, val_words=100, eval_mode='by_word', n_symbols=n_symbol,
-                         weights_dir=os.path.join(WEIGHTS_DIR, f'rnn_meta_training_{val_block_length}'))
+    dec = MetaLSTMTrainer(val_SNR_start=12, val_SNR_end=12, val_SNR_step=2, val_block_length=val_block_length,
+                          noisy_est_var=0, fading_in_channel=True, fading_in_decoder=False, use_ecc=True,
+                          gamma_start=0.2, gamma_end=0.2, gamma_num=1, channel_type='ISI_AWGN',
+                          self_supervised=True, val_words=100, eval_mode='by_word', n_symbols=n_symbol,
+                          weights_dir=os.path.join(WEIGHTS_DIR, f'rnn_meta_training_{val_block_length}'))
     method_name = f'MetaRNN'
     ser = get_ser_plot(dec, run_over=run_over,
                        method_name=method_name + f' - Block Length {val_block_length}, Error symbols {n_symbol}')
@@ -190,11 +190,11 @@ def add_joint_viterbinet(all_curves, val_block_length, n_symbol):
 
 
 def add_joint_rnn(all_curves, val_block_length, n_symbol):
-    dec = RNNTrainer(val_SNR_start=12, val_SNR_end=12, val_SNR_step=2, val_block_length=val_block_length,
-                     noisy_est_var=0, fading_in_channel=True, fading_in_decoder=False, use_ecc=True,
-                     gamma_start=0.2, gamma_end=0.2, gamma_num=1, channel_type='ISI_AWGN',
-                     self_supervised=False, val_words=100, eval_mode='by_word', n_symbols=n_symbol,
-                     weights_dir=os.path.join(WEIGHTS_DIR, f'rnn_joint_{val_block_length}'))
+    dec = LSTMTrainer(val_SNR_start=12, val_SNR_end=12, val_SNR_step=2, val_block_length=val_block_length,
+                      noisy_est_var=0, fading_in_channel=True, fading_in_decoder=False, use_ecc=True,
+                      gamma_start=0.2, gamma_end=0.2, gamma_num=1, channel_type='ISI_AWGN',
+                      self_supervised=False, val_words=100, eval_mode='by_word', n_symbols=n_symbol,
+                      weights_dir=os.path.join(WEIGHTS_DIR, f'rnn_joint_{val_block_length}'))
     method_name = f'JointRNN'
     ser = get_ser_plot(dec, run_over=run_over,
                        method_name=method_name + f' - Block Length {val_block_length}, Error symbols {n_symbol}')
@@ -214,11 +214,11 @@ def add_joint_metaviterbinet(all_curves, val_block_length, n_symbol):
 
 
 def add_joint_metarnn(all_curves, val_block_length, n_symbol):
-    dec = MetaRNNTrainer(val_SNR_start=12, val_SNR_end=12, val_SNR_step=2, val_block_length=val_block_length,
-                         noisy_est_var=0, fading_in_channel=True, fading_in_decoder=False, use_ecc=True,
-                         gamma_start=0.2, gamma_end=0.2, gamma_num=1, channel_type='ISI_AWGN',
-                         self_supervised=True, val_words=100, eval_mode='by_word', n_symbols=n_symbol,
-                         weights_dir=os.path.join(WEIGHTS_DIR, f'rnn_joint_{val_block_length}'))
+    dec = MetaLSTMTrainer(val_SNR_start=12, val_SNR_end=12, val_SNR_step=2, val_block_length=val_block_length,
+                          noisy_est_var=0, fading_in_channel=True, fading_in_decoder=False, use_ecc=True,
+                          gamma_start=0.2, gamma_end=0.2, gamma_num=1, channel_type='ISI_AWGN',
+                          self_supervised=True, val_words=100, eval_mode='by_word', n_symbols=n_symbol,
+                          weights_dir=os.path.join(WEIGHTS_DIR, f'rnn_joint_{val_block_length}'))
     method_name = f'JointRNNMetaStrategy'
     ser = get_ser_plot(dec, run_over=run_over,
                        method_name=method_name + f' - Block Length {val_block_length}, Error symbols {n_symbol}')

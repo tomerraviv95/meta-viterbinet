@@ -13,7 +13,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class VADetector(nn.Module):
     """
-    This implements the VA decoder by unfolding into a neural network
+    This module implements the classic VA detector
     """
 
     def __init__(self,
@@ -22,18 +22,15 @@ class VADetector(nn.Module):
                  transmission_length: int,
                  val_words: int,
                  channel_type: str,
-                 channel_blocks: int,
                  noisy_est_var: float,
                  fading: bool):
 
         super(VADetector, self).__init__()
-        self.start_state = 0
         self.memory_length = memory_length
         self.transmission_length = transmission_length
         self.val_words = val_words
         self.n_states = n_states
         self.channel_type = channel_type
-        self.channel_blocks = channel_blocks
         self.noisy_est_var = noisy_est_var
         self.fading = fading
         self.transition_table_array = create_transition_table(n_states)
@@ -75,15 +72,8 @@ class VADetector(nn.Module):
         # initialize input probabilities
         in_prob = torch.zeros([y.shape[0], self.n_states]).to(device)
 
-        # compute priors for all blocks length
-        block_length = self.transmission_length // self.channel_blocks
-        priors = torch.zeros([y.shape[0], y.shape[1], self.n_states]).to(device)
-
-        # each block goes through different channel estimation
-        for channel_block in range(self.channel_blocks):
-            priors[:, channel_block * block_length: (channel_block + 1) * block_length] = \
-                self.compute_likelihood_priors(gamma,
-                                               y[:, channel_block * block_length: (channel_block + 1) * block_length])
+        # compute transition likelihood priors
+        priors = self.compute_likelihood_priors(gamma, y)
 
         if phase == 'val':
             decoded_word = torch.zeros(y.shape).to(device)

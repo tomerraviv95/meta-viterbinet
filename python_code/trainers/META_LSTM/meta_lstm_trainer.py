@@ -1,15 +1,14 @@
-from python_code.detectors.VNET.vnet_detector import VNETDetector
-from python_code.utils.trellis_utils import calculate_states
+from python_code.detectors.META_LSTM.meta_lstm_detector import MetaLSTMDetector
+from python_code.detectors.LSTM.lstm_detector import LSTMDetector
 from python_code.trainers.trainer import Trainer
 import torch
-import os
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-class VNETTrainer(Trainer):
+class MetaLSTMTrainer(Trainer):
     """
-    Trainer for the ViterbiNet model.
+    Trainer for the LSTM model.
     """
 
     def __init__(self, config_path=None, **kwargs):
@@ -21,33 +20,19 @@ class VNETTrainer(Trainer):
         else:
             channel_state = ', perfect CSI'
 
-        if not self.self_supervised:
-            training = ', untrained'
-        else:
-            training = ''
-
-        return 'ViterbiNet' + channel_state + training
+        return 'Meta LSTM' + channel_state
 
     def initialize_detector(self):
         """
         Loads the ViterbiNet detector
         """
-        self.detector = VNETDetector(n_states=self.n_states,
-                                     transmission_lengths=self.transmission_lengths)
+        self.detector = LSTMDetector()
 
-    def load_weights(self, snr: float, gamma: float):
+    def initialize_meta_detector(self):
         """
-        Loads detector's weights defined by the [snr,gamma] from checkpoint, if exists
+        Every trainer must have some base detector model
         """
-        if os.path.join(self.weights_dir, f'snr_{snr}_gamma_{gamma}.pt'):
-            print(f'loading model from snr {snr} and gamma {gamma}')
-            checkpoint = torch.load(os.path.join(self.weights_dir, f'snr_{snr}_gamma_{gamma}.pt'))
-            try:
-                self.detector.load_state_dict(checkpoint['model_state_dict'])
-            except Exception:
-                raise ValueError("Wrong run directory!!!")
-        else:
-            print(f'No checkpoint for snr {snr} and gamma {gamma} in run "{self.run_name}", starting from scratch')
+        self.meta_detector = MetaLSTMDetector()
 
     def calc_loss(self, soft_estimation: torch.Tensor, transmitted_words: torch.IntTensor) -> torch.Tensor:
         """
@@ -56,15 +41,14 @@ class VNETTrainer(Trainer):
         :param transmitted_words: [1, transmission_length]
         :return: loss value
         """
-        gt_states = calculate_states(self.memory_length, transmitted_words)
-        gt_states_batch, input_batch = self.select_batch(gt_states, soft_estimation.reshape(-1, self.n_states))
-        loss = self.criterion(input=input_batch, target=gt_states_batch)
+        loss = self.criterion(input=soft_estimation.reshape(-1, 2), target=transmitted_words.long().reshape(-1))
         return loss
 
     def online_training(self, detected_word: torch.Tensor, encoded_word: torch.Tensor, gamma: float,
                         received_word: torch.Tensor, ser: float, snr: float):
         """
         Online training module - train on the detected/re-encoded word only if the ser is below some threshold.
+        Start from the saved meta-trained weights.
         :param detected_word: detected channel codeword
         :param encoded_word: re-encoded decoded word
         :param gamma: gamma value
@@ -72,6 +56,8 @@ class VNETTrainer(Trainer):
         :param ser: calculated ser for the word
         :param snr: snr value
         """
+        self.load_weights(snr, gamma)
+        self.deep_learning_setup()
         if ser <= self.ser_thresh:
             # run training loops
             for i in range(self.self_supervised_iterations):
@@ -82,7 +68,7 @@ class VNETTrainer(Trainer):
 
 
 if __name__ == '__main__':
-    dec = VNETTrainer()
-    # dec.train()
-    dec.evaluate()
+    dec = MetaLSTMTrainer()
+    dec.meta_train()
+    # dec.evaluate()
     # dec.count_parameters()

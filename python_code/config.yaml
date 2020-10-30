@@ -2,7 +2,6 @@
 run_name: 'rnn_meta_training_200'
 
 # coding parameters
-channel_blocks: 1
 use_ecc: False # True, False
 n_symbols: 4
 
@@ -20,17 +19,17 @@ gamma_num: 1
 
 # validation hyperparameters
 val_block_length: 200
+val_words: 200
 val_SNR_start: 12
 val_SNR_end: 12
 val_SNR_step: 2
-val_words: 200
 eval_mode: 'aggregated' # 'aggregated','by_word'
 
 # train hyperparameters
 train_block_length: 200
+train_words: 200
 train_minibatch_num: 50
 train_minibatch_size: 32
-train_words: 200
 train_SNR_start: 12
 train_SNR_end: 12
 train_SNR_step: 2
@@ -38,13 +37,12 @@ lr: 0.001 # learning rate
 loss_type: 'CrossEntropy' # 'BCE','CrossEntropy','MSE'
 print_every_n_train_minibatches: 5
 optimizer_type: 'Adam' # 'Adam','RMSprop','SGD'
-early_stopping_mode: False # True, False
-self_supervised: False # True, False
 
 # seed
 noise_seed: 3450002
 word_seed: 7860002
 
-# meta
-meta_words: 200
-meta_lr: 0.001
+# self-supervised online training
+self_supervised: False # True, False
+self_supervised_iterations: 500
+ser_thresh: 0.02

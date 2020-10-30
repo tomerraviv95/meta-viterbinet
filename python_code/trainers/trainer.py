@@ -2,7 +2,6 @@ from typing import Tuple, Union
 
 from python_code.channel.channel_dataset import ChannelModelDataset
 from python_code.ecc.rs_main import decode, encode
-from python_code.utils.early_stopping import EarlyStopping
 from python_code.utils.metrics import calculate_error_rates
 from dir_definitions import CONFIG_PATH, WEIGHTS_DIR
 from torch.nn import CrossEntropyLoss, BCELoss, MSELoss
@@ -16,7 +15,6 @@ import numpy as np
 import math
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-STEPS_NUM = 10
 
 
 class Trainer(object):
@@ -26,7 +24,6 @@ class Trainer(object):
         self.run_name = None
 
         # code parameters
-        self.channel_blocks = None
         self.use_ecc = None
         self.n_symbols = None
 
@@ -44,17 +41,17 @@ class Trainer(object):
 
         # validation hyperparameters
         self.val_block_length = None
+        self.val_words = None
         self.val_SNR_start = None
         self.val_SNR_end = None
         self.val_SNR_step = None
-        self.val_words = None
         self.eval_mode = None
 
         # training hyperparameters
         self.train_block_length = None
+        self.train_words = None
         self.train_minibatch_num = None
         self.train_minibatch_size = None
-        self.train_words = None
         self.train_SNR_start = None
         self.train_SNR_end = None
         self.train_SNR_step = None
@@ -62,12 +59,11 @@ class Trainer(object):
         self.loss_type = None
         self.print_every_n_train_minibatches = None
         self.optimizer_type = None
-        self.early_stopping_mode = None
-        self.self_supervised = None
 
-        # meta
-        self.meta_words = None
-        self.meta_lr = None
+        # self-supervised online training
+        self.self_supervised = None
+        self.self_supervised_iterations = None
+        self.ser_thresh = None
 
         # seed
         self.noise_seed = None
@@ -90,6 +86,7 @@ class Trainer(object):
         # initialize matrices, datasets and detector
         self.initialize_dataloaders()
         self.initialize_detector()
+        self.initialize_meta_detector()
 
     def initialize_by_kwargs(self, **kwargs):
         for k, v in kwargs.items():
@@ -131,6 +128,13 @@ class Trainer(object):
         self.detector = None
         pass
 
+    def initialize_meta_detector(self):
+        """
+        Every trainer must have some base detector model
+        """
+        self.meta_detector = None
+        pass
+
     def check_eval_mode(self):
         if self.eval_mode != 'aggregated' and self.eval_mode != 'by_word':
             raise ValueError("No such eval mode!!!")
@@ -158,10 +162,6 @@ class Trainer(object):
                                  lr=self.lr)
         else:
             raise NotImplementedError("No such optimizer implemented!!!")
-        if self.early_stopping_mode:
-            self.es = EarlyStopping(patience=4)
-        else:
-            self.es = None
         if self.loss_type == 'BCE':
             self.criterion = BCELoss().to(device)
         elif self.loss_type == 'CrossEntropy':
@@ -178,22 +178,14 @@ class Trainer(object):
         self.snr_range = {'train': np.arange(self.train_SNR_start, self.train_SNR_end + 1, step=self.train_SNR_step),
                           'val': np.arange(self.val_SNR_start, self.val_SNR_end + 1, step=self.val_SNR_step)}
         self.gamma_range = np.linspace(self.gamma_start, self.gamma_end, self.gamma_num)
-        self.channel_blocks_per_phase = {'train': self.channel_blocks,
-                                         'val': self.channel_blocks,
-                                         'meta_train': self.channel_blocks}
-        self.words_per_phase = {'train': self.train_words, 'val': self.val_words, 'meta_train': self.meta_words}
-        self.block_lengths = {'train': self.train_block_length,
-                              'val': self.val_block_length,
-                              'meta_train': self.train_block_length}
-        self.transmission_lengths = {
-            'train': self.train_block_length,
-            'val': self.val_block_length if not self.use_ecc else self.val_block_length + 8 * self.n_symbols,
-            'meta_train': self.train_block_length}
+        self.words_per_phase = {'train': self.train_words, 'val': self.val_words}
+        self.block_lengths = {'train': self.train_block_length, 'val': self.val_block_length}
+        self.transmission_lengths = {'train': self.train_block_length,
+                                     'val': self.val_block_length if not self.use_ecc else self.val_block_length + 8 * self.n_symbols}
         self.channel_dataset = {
             phase: ChannelModelDataset(channel_type=self.channel_type,
                                        block_length=self.block_lengths[phase],
                                        transmission_length=self.transmission_lengths[phase],
-                                       channel_blocks=self.channel_blocks_per_phase[phase],
                                        words=self.words_per_phase[phase],
                                        memory_length=self.memory_length,
                                        random=self.rand_gen,
@@ -204,9 +196,12 @@ class Trainer(object):
                                        fading_in_channel=self.fading_in_channel,
                                        fading_in_decoder=self.fading_in_decoder,
                                        phase=phase)
-            for phase in ['train', 'val', 'meta_train']}
+            for phase in ['train', 'val']}
         self.dataloaders = {phase: torch.utils.data.DataLoader(self.channel_dataset[phase])
-                            for phase in ['train', 'val', 'meta_train']}
+                            for phase in ['train', 'val']}
+
+    def online_training(self):
+        pass
 
     def single_eval_at_point(self, snr: float, gamma: float) -> float:
         """
@@ -228,28 +223,15 @@ class Trainer(object):
 
         return ser
 
-    def single_eval(self, snr: float, gamma: float) -> float:
-        """
-        ViterbiNet single eval - either a normal evaluation or on-the-fly online training
-        """
-        # eval with training
-        if self.self_supervised:
-            return self.eval_by_word(snr, gamma)
-        else:
-            # a normal evaluation, return evaluation of parent class
-            return self.single_eval_at_point(snr, gamma)
-
     def gamma_eval(self, gamma: float) -> np.ndarray:
         """
         Evaluation at a single gamma value.
         :return: ser for batch.
         """
         ser_total = np.zeros(len(self.snr_range['val']))
-
         for snr_ind, snr in enumerate(self.snr_range['val']):
             self.load_weights(snr, gamma)
-            ser_total[snr_ind] = self.single_eval(snr, gamma)
-
+            ser_total[snr_ind] = self.single_eval_at_point(snr, gamma)
         return ser_total
 
     def evaluate_at_point(self) -> np.ndarray:
@@ -266,20 +248,6 @@ class Trainer(object):
                 print(f'Done. time: {time() - start}, ser: {ser_total / (gamma_count + 1)}')
         ser_total /= self.gamma_num
         return ser_total
-
-    def evaluate(self) -> np.ndarray:
-        """
-        Evaluation either happens in a point aggregation way, or in a word-by-word fashion
-        """
-        # eval with training
-        self.check_eval_mode()
-        if self.eval_mode == 'by_word':
-            snr = self.snr_range['val'][0]
-            gamma = self.gamma_range[0]
-            self.load_weights(snr, gamma)
-            return self.eval_by_word(snr, gamma)
-        else:
-            return self.evaluate_at_point()
 
     def eval_by_word(self, snr: float, gamma: float) -> Union[float, np.ndarray]:
         if self.self_supervised:
@@ -320,7 +288,27 @@ class Trainer(object):
         print(f'Final ser: {total_ser}')
         return ser_by_word
 
+    def evaluate(self) -> np.ndarray:
+        """
+        Evaluation either happens in a point aggregation way, or in a word-by-word fashion
+        """
+        # eval with training
+        self.check_eval_mode()
+        if self.eval_mode == 'by_word':
+            snr = self.snr_range['val'][0]
+            gamma = self.gamma_range[0]
+            self.load_weights(snr, gamma)
+            return self.eval_by_word(snr, gamma)
+        else:
+            return self.evaluate_at_point()
+
     def meta_train(self):
+        """
+        Main meta-training loop. Runs in minibatches, each minibatch is split to pairs of following words.
+        The pairs are comprised of (support,query) words.
+        Evaluates performance over validation SNRs.
+        Saves weights every so and so iterations.
+        """
         # initialize weights and loss
         for snr in self.snr_range['train']:
             for gamma in self.gamma_range:
@@ -330,19 +318,22 @@ class Trainer(object):
                 self.deep_learning_setup()
                 best_ser = math.inf
                 for minibatch in range(1, self.train_minibatch_num + 1):
-                    # draw words
-                    # at each minibatch, use different channel
-                    transmitted_words, received_words = self.channel_dataset['meta_train'].__getitem__(
+
+                    # draw words from different channels
+                    transmitted_words, received_words = self.channel_dataset['train'].__getitem__(
                         snr_list=[snr],
                         gamma=gamma)
-                    even_idx = torch.arange(0, self.meta_words, 2).long()
-                    odd_idx = torch.arange(1, self.meta_words, 2).long()
+
+                    # divide the words to following pairs - (support,query)
+                    even_idx = torch.arange(0, self.train_words, 2).long()
+                    odd_idx = torch.arange(1, self.train_words, 2).long()
                     support_transmitted_words, support_received_words = transmitted_words[even_idx], received_words[
                         even_idx]
                     query_transmitted_words, query_received_words = transmitted_words[odd_idx], received_words[odd_idx]
                     loss_supp, loss_query = math.inf, math.inf
 
-                    for word_ind in range(self.meta_words // 2):
+                    # meta-learning loop
+                    for word_ind in range(self.train_words // 2):
                         # support words
                         support_rx = support_received_words[word_ind].reshape(1, -1)
                         support_tx = support_transmitted_words[word_ind].reshape(1, -1)
@@ -357,7 +348,7 @@ class Trainer(object):
                         # set create_graph to True for MAML, False for FO-MAML
                         local_grad = torch.autograd.grad(loss_supp, para_list_detector, create_graph=False)
                         updated_para_list_detector = list(
-                            map(lambda p: p[1] - self.meta_lr * p[0], zip(local_grad, para_list_detector)))
+                            map(lambda p: p[1] - self.lr * p[0], zip(local_grad, para_list_detector)))
 
                         # query words
                         query_rx = query_received_words[word_ind].reshape(1, -1)
@@ -378,15 +369,14 @@ class Trainer(object):
 
                         self.optimizer.step()
 
-                    # evaluate performance
-                    ser = self.single_eval(snr, gamma)
-                    print(f'Minibatch {minibatch}, ser - {ser}')
-                    # save best weights
-                    if ser < best_ser:
-                        self.save_weights(float(loss_query), snr, gamma)
-                        best_ser = ser
-                    if self.early_stopping_mode and self.es.step(ser):
-                        break
+                    if minibatch % self.print_every_n_train_minibatches == 0:
+                        # evaluate performance
+                        ser = self.single_eval_at_point(snr, gamma)
+                        print(f'Minibatch {minibatch}, ser - {ser}')
+                        # save best weights
+                        if ser < best_ser:
+                            self.save_weights(float(loss_query), snr, gamma)
+                            best_ser = ser
 
     def train(self):
         """
@@ -416,19 +406,17 @@ class Trainer(object):
 
                     if minibatch % self.print_every_n_train_minibatches == 0:
                         # evaluate performance
-                        ser = self.single_eval(snr, gamma)
+                        ser = self.single_eval_at_point(snr, gamma)
                         print(f'Minibatch {minibatch}, Loss {current_loss}, ser - {ser}')
                         # save best weights
                         if ser < best_ser:
                             self.save_weights(current_loss, snr, gamma)
                             best_ser = ser
-                        if self.early_stopping_mode and self.es.step(ser):
-                            break
 
                 print(f'best ser - {best_ser}')
                 print('*' * 50)
 
-    def run_train_loop(self, soft_estimation, transmitted_words):
+    def run_train_loop(self, soft_estimation: torch.Tensor, transmitted_words: torch.Tensor):
         # calculate loss
         loss = self.calc_loss(soft_estimation=soft_estimation, transmitted_words=transmitted_words)
         # if loss is Nan inform the user

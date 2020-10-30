@@ -1,17 +1,11 @@
-from typing import Union
-from python_code.detectors.METAVNET.meta_vnet_detector import META_VNETDetector
+from python_code.detectors.META_VNET.meta_vnet_detector import META_VNETDetector
 from python_code.detectors.VNET.vnet_detector import VNETDetector
-from python_code.ecc.rs_main import decode, encode
-from python_code.utils.metrics import calculate_error_rates
 from python_code.utils.trellis_utils import calculate_states
 from python_code.trainers.trainer import Trainer
-import numpy as np
 import torch
 import os
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-SER_THRESH = 0.02
-SELF_SUPERVISED_ITERATIONS = 500
 
 
 class METAVNETTrainer(Trainer):
@@ -36,6 +30,11 @@ class METAVNETTrainer(Trainer):
         """
         self.detector = VNETDetector(n_states=self.n_states,
                                      transmission_lengths=self.transmission_lengths)
+
+    def initialize_meta_detector(self):
+        """
+        Every trainer must have some base detector model
+        """
         self.meta_detector = META_VNETDetector(n_states=self.n_states,
                                                transmission_lengths=self.transmission_lengths)
 
@@ -67,9 +66,9 @@ class METAVNETTrainer(Trainer):
     def online_training(self, detected_word, encoded_word, gamma, received_word, ser, snr):
         self.load_weights(snr, gamma)
         self.deep_learning_setup()
-        if ser <= SER_THRESH:
+        if ser <= self.ser_thresh:
             # run training loops
-            for i in range(SELF_SUPERVISED_ITERATIONS):
+            for i in range(self.self_supervised_iterations):
                 # calculate soft values
                 soft_estimation = self.detector(received_word, 'train')
                 labels = detected_word if ser > 0 else encoded_word

@@ -7,27 +7,23 @@ INPUT_SIZE = 4
 HIDDEN_SIZE = 256
 NUM_LAYERS = 2
 N_CLASSES = 2
+START_VALUE_PADDING = -100
 
 
 # Directional recurrent neural network (many-to-one)
-class RNNDetector(nn.Module):
+class LSTMDetector(nn.Module):
     """
-    This class implements a sliding RNN detector
+    This class implements an LSTM detector
     """
 
     def __init__(self):
-        super(RNNDetector, self).__init__()
-        self.initialize_rnn()
-
-    def initialize_rnn(self):
-        self.hidden_size = HIDDEN_SIZE
-        self.num_layers = NUM_LAYERS
+        super(LSTMDetector, self).__init__()
         self.lstm = nn.LSTM(INPUT_SIZE, HIDDEN_SIZE, NUM_LAYERS, batch_first=True, bidirectional=False).to(device)
         self.fc = nn.Linear(HIDDEN_SIZE, N_CLASSES).to(device)
 
     def forward(self, y: torch.Tensor, phase: str) -> torch.Tensor:
         """
-        The forward pass of the RNN detector
+        The forward pass of the LSTM detector
         :param y: input values, size [batch_size,transmission_length]
         :param phase: 'train' or 'val'
         :return: if in 'train' - the estimated bitwise prob [batch_size,transmission_length,N_CLASSES]
@@ -36,11 +32,11 @@ class RNNDetector(nn.Module):
         batch_size, transmission_length = y.size(0), y.size(1)
 
         # Set initial states
-        h_n = torch.zeros(self.num_layers, batch_size, self.hidden_size).to(device)
-        c_n = torch.zeros(self.num_layers, batch_size, self.hidden_size).to(device)
+        h_n = torch.zeros(NUM_LAYERS, batch_size, HIDDEN_SIZE).to(device)
+        c_n = torch.zeros(NUM_LAYERS, batch_size, HIDDEN_SIZE).to(device)
 
         # pad and reshape y to the proper shape - (batch_size,seq_length,input_size)
-        padded_y = torch.nn.functional.pad(y, [0, INPUT_SIZE - 1, 0, 0], value=-100)
+        padded_y = torch.nn.functional.pad(y, [0, INPUT_SIZE - 1, 0, 0], value=START_VALUE_PADDING)
         sequence_y = torch.cat([torch.roll(padded_y.unsqueeze(1), i, 2) for i in range(INPUT_SIZE - 1, -1, -1)], dim=1)
         sequence_y = sequence_y.transpose(1, 2)[:, :transmission_length]
 
