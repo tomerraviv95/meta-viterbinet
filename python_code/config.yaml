@@ -7,7 +7,7 @@ n_symbols: 4
 
 # channel
 memory_length: 4
-channel_type: 'Poisson' #'ISI_AWGN','Poisson'
+channel_type: 'ISI_AWGN' #'ISI_AWGN','Poisson'
 noisy_est_var: 0 # 0, 0.1 for ISI_AWGN, 0.08 for Poisson
 fading_in_channel: False # True, False
 fading_in_decoder: False # True, False
