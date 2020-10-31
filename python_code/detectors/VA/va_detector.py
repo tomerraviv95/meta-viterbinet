@@ -1,10 +1,10 @@
-import math
-
 from python_code.channel.channel_estimation import estimate_channel
 from python_code.channel.modulator import BPSKModulator, OnOffModulator
 import numpy as np
 import torch
 import torch.nn as nn
+from scipy.stats import poisson
+import math
 
 from python_code.utils.trellis_utils import create_transition_table, acs_block
 
@@ -48,24 +48,37 @@ class VADetector(nn.Module):
         state_priors = np.dot(all_states_symbols, h.T)
         return torch.Tensor(state_priors).to(device)
 
-    def compute_likelihood_priors(self, gamma: float, y: torch.Tensor):
+    def compute_likelihood_priors(self, y: torch.Tensor, snr: float, gamma: float):
         # estimate channel per word (only changes between the h's if fading is True)
         h = np.concatenate([estimate_channel(self.memory_length, gamma, noisy_est_var=self.noisy_est_var,
                                              fading=self.fading, index=index) for index in range(self.val_words)],
                            axis=0)
         # compute priors
         state_priors = self.compute_state_priors(h)
-        priors = y.unsqueeze(dim=2) - state_priors.T.repeat(repeats=[y.shape[0] // state_priors.shape[1], 1]).unsqueeze(
-            dim=1)
-        # to llr representation
-        priors = priors ** 2 / 2 - math.log(math.sqrt(2 * math.pi))
+        if self.channel_type == 'ISI_AWGN':
+            priors = y.unsqueeze(dim=2) - state_priors.T.repeat(
+                repeats=[y.shape[0] // state_priors.shape[1], 1]).unsqueeze(
+                dim=1)
+            # to llr representation
+            priors = priors ** 2 / 2 - math.log(math.sqrt(2 * math.pi))
+        elif self.channel_type == 'Poisson':
+            lambda_val = 10 ** (snr / 20) * state_priors + 1
+            repeated_lambda_val = lambda_val.T.repeat_interleave(y.shape[1], dim=0)
+            priors = poisson.pmf(y.cpu().numpy().reshape(-1, 1),
+                                 repeated_lambda_val.cpu().numpy()).reshape(y.shape[0],
+                                                                            y.shape[1],
+                                                                            -1)
+            priors = -torch.Tensor(priors).to(device)
+        else:
+            raise Exception('No such channel defined!!!')
         return priors
 
-    def forward(self, y: torch.Tensor, phase: str, gamma: float):
+    def forward(self, y: torch.Tensor, phase: str, snr: float, gamma: float):
         """
         The forward pass of the Viterbi algorithm
         :param y: input values (batch)
         :param phase: 'train' or 'val'
+        :param snr: channel snr
         :param gamma: channel coefficient
         :returns tensor of detected word, same shape as y
         """
@@ -73,7 +86,7 @@ class VADetector(nn.Module):
         in_prob = torch.zeros([y.shape[0], self.n_states]).to(device)
 
         # compute transition likelihood priors
-        priors = self.compute_likelihood_priors(gamma, y)
+        priors = self.compute_likelihood_priors(y, snr, gamma)
 
         if phase == 'val':
             decoded_word = torch.zeros(y.shape).to(device)

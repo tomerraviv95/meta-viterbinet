@@ -37,58 +37,11 @@ class VATrainer(Trainer):
                                    noisy_est_var=self.noisy_est_var,
                                    fading=self.fading_in_decoder)
 
-    def gamma_eval(self, gamma: float) -> np.ndarray:
-        """
-        Evaluation at a single snr.
-        :param snr: indice of snr in the snrs vector
-        :return: ser for batch
-        """
-        ser_total = np.zeros(len(self.snr_range['val']))
-
-        # draw words of given gamma for all snrs
-        transmitted_words, received_words = self.channel_dataset['val'].__getitem__(
-            snr_list=self.snr_range['val'],
-            gamma=gamma)
-
-        # decode and calculate accuracy
-        detected_words = self.detector(received_words, 'val', gamma)
-
-        if self.use_ecc:
-            decoded_words = [decode(detected_word, self.n_symbols) for detected_word in detected_words.cpu().numpy()]
-            detected_words = torch.Tensor(decoded_words).to(device)
-
-        for snr_ind in range(len(self.snr_range['val'])):
-            start_ind = snr_ind * self.val_words
-            end_ind = (snr_ind + 1) * self.val_words
-            ser, fer, err_indices = calculate_error_rates(detected_words[start_ind:end_ind],
-                                                          transmitted_words[start_ind:end_ind])
-            ser_total[snr_ind] = ser
-
-        return ser_total
-
     def load_weights(self, snr: float, gamma: float):
         pass
 
     def train(self):
         raise NotImplementedError("No training implemented for this decoder!!!")
-
-    def eval_by_word(self, snr: float, gamma: float) -> Union[float, np.ndarray]:
-        # draw words of given gamma for all snrs
-        transmitted_words, received_words = self.channel_dataset['val'].__getitem__(snr_list=[snr], gamma=gamma)
-
-        # decode and calculate accuracy
-        detected_words = self.detector(received_words, 'val', gamma)
-
-        if self.use_ecc:
-            decoded_words = [decode(detected_word, self.n_symbols) for detected_word in detected_words.cpu().numpy()]
-            detected_words = torch.Tensor(decoded_words).to(device)
-
-        ser_by_word = np.zeros(transmitted_words.shape[0])
-        for count in range(len(self.snr_range['val'])):
-            ser, fer, err_indices = calculate_error_rates(detected_words[count].reshape(1, -1),
-                                                          transmitted_words[count].reshape(1, -1))
-            ser_by_word[count] = ser
-        return ser_by_word
 
 
 if __name__ == '__main__':

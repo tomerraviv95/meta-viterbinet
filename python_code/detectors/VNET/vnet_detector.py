@@ -33,11 +33,13 @@ class VNETDetector(nn.Module):
                   nn.Linear(HIDDEN2_SIZE, self.n_states)]
         self.net = nn.Sequential(*layers).to(device)
 
-    def forward(self, y: torch.Tensor, phase: str) -> torch.Tensor:
+    def forward(self, y: torch.Tensor, phase: str, snr: float = None, gamma: float = None) -> torch.Tensor:
         """
         The forward pass of the ViterbiNet algorithm
         :param y: input values, size [batch_size,transmission_length]
         :param phase: 'train' or 'val'
+        :param snr: channel snr
+        :param gamma: channel coefficient
         :returns if in 'train' - the estimated priors [batch_size,transmission_length,n_states]
         if in 'val' - the detected words [n_batch,transmission_length]
         """

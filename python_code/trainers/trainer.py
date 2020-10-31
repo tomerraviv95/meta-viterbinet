@@ -200,7 +200,8 @@ class Trainer(object):
         self.dataloaders = {phase: torch.utils.data.DataLoader(self.channel_dataset[phase])
                             for phase in ['train', 'val']}
 
-    def online_training(self):
+    def online_training(self, detected_word: torch.Tensor, encoded_word: torch.Tensor, gamma: float,
+                        received_word: torch.Tensor, ser: float, snr: float):
         pass
 
     def single_eval_at_point(self, snr: float, gamma: float) -> float:
@@ -213,7 +214,7 @@ class Trainer(object):
         transmitted_words, received_words = self.channel_dataset['val'].__getitem__(snr_list=[snr], gamma=gamma)
 
         # decode and calculate accuracy
-        detected_words = self.detector(received_words, 'val')
+        detected_words = self.detector(received_words, 'val', snr, gamma)
 
         if self.use_ecc:
             decoded_words = [decode(detected_word, self.n_symbols) for detected_word in detected_words.cpu().numpy()]
@@ -261,7 +262,7 @@ class Trainer(object):
             transmitted_word, received_word = transmitted_word.reshape(1, -1), received_word.reshape(1, -1)
 
             # detect
-            detected_word = self.detector(received_word, 'val')
+            detected_word = self.detector(received_word, 'val', snr, gamma)
 
             # decode
             decoded_word = [decode(detected_word, self.n_symbols) for detected_word in detected_word.cpu().numpy()]
