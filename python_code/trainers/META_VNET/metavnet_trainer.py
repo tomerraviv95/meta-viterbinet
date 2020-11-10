@@ -38,20 +38,6 @@ class METAVNETTrainer(Trainer):
         self.meta_detector = META_VNETDetector(n_states=self.n_states,
                                                transmission_lengths=self.transmission_lengths)
 
-    def load_weights(self, snr: float, gamma: float):
-        """
-        Loads detector's weights defined by the [snr,gamma] from checkpoint, if exists
-        """
-        if os.path.join(self.weights_dir, f'snr_{snr}_gamma_{gamma}.pt'):
-            print(f'loading model from snr {snr} and gamma {gamma}')
-            checkpoint = torch.load(os.path.join(self.weights_dir, f'snr_{snr}_gamma_{gamma}.pt'))
-            try:
-                self.detector.load_state_dict(checkpoint['model_state_dict'])
-            except Exception:
-                raise ValueError("Wrong run directory!!!")
-        else:
-            print(f'No checkpoint for snr {snr} and gamma {gamma} in run "{self.run_name}", starting from scratch')
-
     def calc_loss(self, soft_estimation: torch.Tensor, transmitted_words: torch.IntTensor) -> torch.Tensor:
         """
         Cross Entropy loss - distribution over states versus the gt state label
@@ -63,9 +49,17 @@ class METAVNETTrainer(Trainer):
         loss = self.criterion(input=soft_estimation.reshape(-1, self.n_states), target=gt_states)
         return loss
 
-    def online_training(self, detected_word, encoded_word, gamma, received_word, ser, snr):
-        self.load_weights(snr, gamma)
-        self.deep_learning_setup()
+    def online_training(self, detected_word: torch.Tensor, encoded_word: torch.Tensor, received_word: torch.Tensor,
+                        ser: float):
+        """
+        Online training module - train on the detected/re-encoded word only if the ser is below some threshold.
+        Start from the saved meta-trained weights.
+        :param detected_word: detected channel codeword
+        :param encoded_word: re-encoded decoded word
+        :param received_word: the channel received word
+        :param ser: calculated ser for the word
+        """
+        self.detector = self.saved_detector.copy()
         if ser <= self.ser_thresh:
             # run training loops
             for i in range(self.self_supervised_iterations):

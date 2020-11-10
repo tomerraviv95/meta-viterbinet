@@ -47,3 +47,4 @@ word_seed: 7860002
 self_supervised: False # True, False
 self_supervised_iterations: 500
 ser_thresh: 0.02
+online_meta_subframes_buffer: 10

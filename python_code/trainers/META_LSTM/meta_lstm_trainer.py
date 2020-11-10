@@ -44,20 +44,17 @@ class MetaLSTMTrainer(Trainer):
         loss = self.criterion(input=soft_estimation.reshape(-1, 2), target=transmitted_words.long().reshape(-1))
         return loss
 
-    def online_training(self, detected_word: torch.Tensor, encoded_word: torch.Tensor, gamma: float,
-                        received_word: torch.Tensor, ser: float, snr: float):
+    def online_training(self, detected_word: torch.Tensor, encoded_word: torch.Tensor, received_word: torch.Tensor,
+                        ser: float):
         """
         Online training module - train on the detected/re-encoded word only if the ser is below some threshold.
         Start from the saved meta-trained weights.
         :param detected_word: detected channel codeword
         :param encoded_word: re-encoded decoded word
-        :param gamma: gamma value
         :param received_word: the channel received word
         :param ser: calculated ser for the word
-        :param snr: snr value
         """
-        self.load_weights(snr, gamma)
-        self.deep_learning_setup()
+        self.detector = self.saved_detector.copy()
         if ser <= self.ser_thresh:
             # run training loops
             for i in range(self.self_supervised_iterations):

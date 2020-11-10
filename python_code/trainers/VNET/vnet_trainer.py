@@ -35,20 +35,6 @@ class VNETTrainer(Trainer):
         self.detector = VNETDetector(n_states=self.n_states,
                                      transmission_lengths=self.transmission_lengths)
 
-    def load_weights(self, snr: float, gamma: float):
-        """
-        Loads detector's weights defined by the [snr,gamma] from checkpoint, if exists
-        """
-        if os.path.join(self.weights_dir, f'snr_{snr}_gamma_{gamma}.pt'):
-            print(f'loading model from snr {snr} and gamma {gamma}')
-            checkpoint = torch.load(os.path.join(self.weights_dir, f'snr_{snr}_gamma_{gamma}.pt'))
-            try:
-                self.detector.load_state_dict(checkpoint['model_state_dict'])
-            except Exception:
-                raise ValueError("Wrong run directory!!!")
-        else:
-            print(f'No checkpoint for snr {snr} and gamma {gamma} in run "{self.run_name}", starting from scratch')
-
     def calc_loss(self, soft_estimation: torch.Tensor, transmitted_words: torch.IntTensor) -> torch.Tensor:
         """
         Cross Entropy loss - distribution over states versus the gt state label
@@ -61,16 +47,14 @@ class VNETTrainer(Trainer):
         loss = self.criterion(input=input_batch, target=gt_states_batch)
         return loss
 
-    def online_training(self, detected_word: torch.Tensor, encoded_word: torch.Tensor, gamma: float,
-                        received_word: torch.Tensor, ser: float, snr: float):
+    def online_training(self, detected_word: torch.Tensor, encoded_word: torch.Tensor,
+                        received_word: torch.Tensor, ser: float):
         """
         Online training module - train on the detected/re-encoded word only if the ser is below some threshold.
         :param detected_word: detected channel codeword
         :param encoded_word: re-encoded decoded word
-        :param gamma: gamma value
         :param received_word: the channel received word
         :param ser: calculated ser for the word
-        :param snr: snr value
         """
         if ser <= self.ser_thresh:
             # run training loops

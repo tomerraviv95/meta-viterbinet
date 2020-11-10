@@ -65,6 +65,7 @@ class Trainer(object):
         self.self_supervised = None
         self.self_supervised_iterations = None
         self.ser_thresh = None
+        self.online_meta_subframes_buffer = None
 
         # seed
         self.noise_seed = None
@@ -203,8 +204,8 @@ class Trainer(object):
         self.dataloaders = {phase: torch.utils.data.DataLoader(self.channel_dataset[phase])
                             for phase in ['train', 'val']}
 
-    def online_training(self, detected_word: torch.Tensor, encoded_word: torch.Tensor, gamma: float,
-                        received_word: torch.Tensor, ser: float, snr: float):
+    def online_training(self, detected_word: torch.Tensor, encoded_word: torch.Tensor, received_word: torch.Tensor,
+                        ser: float):
         pass
 
     def single_eval_at_point(self, snr: float, gamma: float) -> float:
@@ -262,6 +263,8 @@ class Trainer(object):
         # self-supervised loop
         total_ser = 0
         ser_by_word = np.zeros(transmitted_words.shape[0])
+        self.saved_detector = self.detector.copy()
+        pseudo_transmitted = torch.empty([0, transmitted_words.shape[1]])
         for count, (transmitted_word, received_word) in enumerate(zip(transmitted_words, received_words)):
             transmitted_word, received_word = transmitted_word.reshape(1, -1), received_word.reshape(1, -1)
             # detect
@@ -282,13 +285,25 @@ class Trainer(object):
                 print(f'current: {count, ser, errors_num}')
 
                 if self.self_supervised:
-                    self.online_training(detected_word, encoded_word, gamma, received_word, ser, snr)
+                    self.online_training(detected_word, encoded_word, received_word, ser)
 
                 total_ser += ser
                 ser_by_word[count] = ser
+                # savein buffer decoded word
+                pseudo_transmitted = torch.cat([pseudo_transmitted, decoded_word])
             else:
+                # encode word again
+                decoded_word_array = transmitted_word.int().cpu().numpy()
+                encoded_word = torch.Tensor(encode(decoded_word_array, self.n_symbols).reshape(1, -1)).to(device)
                 if self.self_supervised:
-                    self.online_training(detected_word, transmitted_word, gamma, received_word, 0, snr)
+                    self.online_training(detected_word, encoded_word, received_word, 0)
+                # save in buffer the gt
+                pseudo_transmitted = torch.cat([pseudo_transmitted, transmitted_word])
+
+            if (count + 1) % self.online_meta_subframes_buffer:
+                print('meta-training')
+                self.meta_train_loop(received_words[:count + 1], pseudo_transmitted[1:])
+                self.saved_detector = self.detector.copy()
 
             if (count + 1) % 10 == 0:
                 print(f'Self-supervised: {count + 1}/{transmitted_words.shape[0]}, SER {total_ser / (count + 1)}')
@@ -332,50 +347,7 @@ class Trainer(object):
                         snr_list=[snr],
                         gamma=gamma)
 
-                    # divide the words to following pairs - (support,query)
-                    even_idx = torch.arange(0, self.train_frames * self.subframes_in_frame, 2).long()
-                    odd_idx = torch.arange(1, self.train_frames * self.subframes_in_frame, 2).long()
-                    support_transmitted_words, support_received_words = transmitted_words[even_idx], received_words[
-                        even_idx]
-                    query_transmitted_words, query_received_words = transmitted_words[odd_idx], received_words[odd_idx]
-                    loss_supp, loss_query = math.inf, math.inf
-
-                    # meta-learning loop
-                    for word_ind in range(self.train_frames * self.subframes_in_frame // 2):
-                        # support words
-                        support_rx = support_received_words[word_ind].reshape(1, -1)
-                        support_tx = support_transmitted_words[word_ind].reshape(1, -1)
-
-                        # local update (with support set)
-                        para_list_detector = list(map(lambda p: p[0], zip(self.detector.parameters())))
-                        soft_estimation_supp = self.meta_detector(support_rx, 'train',
-                                                                  para_list_detector)
-                        loss_supp = self.calc_loss(soft_estimation=soft_estimation_supp,
-                                                   transmitted_words=support_tx)
-
-                        # set create_graph to True for MAML, False for FO-MAML
-                        local_grad = torch.autograd.grad(loss_supp, para_list_detector, create_graph=False)
-                        updated_para_list_detector = list(
-                            map(lambda p: p[1] - self.lr * p[0], zip(local_grad, para_list_detector)))
-
-                        # query words
-                        query_rx = query_received_words[word_ind].reshape(1, -1)
-                        query_tx = query_transmitted_words[word_ind].reshape(1, -1)
-
-                        # meta-update (with query set) should be same channel with support set
-                        soft_estimation_query = self.meta_detector(query_rx, 'train',
-                                                                   updated_para_list_detector)
-                        loss_query = self.calc_loss(soft_estimation=soft_estimation_query,
-                                                    transmitted_words=query_tx)
-                        meta_grad = torch.autograd.grad(loss_query, para_list_detector, create_graph=False)
-
-                        ind_param = 0
-                        for param in self.detector.parameters():
-                            param.grad = None  # zero_grad
-                            param.grad = meta_grad[ind_param]
-                            ind_param += 1
-
-                        self.optimizer.step()
+                    loss_query = self.meta_train_loop(received_words, transmitted_words)
 
                     if minibatch % self.print_every_n_train_minibatches == 0:
                         # evaluate performance
@@ -385,6 +357,52 @@ class Trainer(object):
                         if ser < best_ser:
                             self.save_weights(float(loss_query), snr, gamma)
                             best_ser = ser
+
+    def meta_train_loop(self, received_words: torch.Tensor, transmitted_words: torch.Tensor):
+        # divide the words to following pairs - (support,query)
+        even_idx = torch.arange(0, transmitted_words.shape[0], 2).long()
+        odd_idx = torch.arange(1, transmitted_words.shape[0], 2).long()
+        support_transmitted_words, support_received_words = transmitted_words[even_idx], received_words[
+            even_idx]
+        query_transmitted_words, query_received_words = transmitted_words[odd_idx], received_words[odd_idx]
+        loss_supp, loss_query = math.inf, math.inf
+        # meta-learning loop
+        for word_ind in range(transmitted_words.shape[0] // 2):
+            # support words
+            support_rx = support_received_words[word_ind].reshape(1, -1)
+            support_tx = support_transmitted_words[word_ind].reshape(1, -1)
+
+            # local update (with support set)
+            para_list_detector = list(map(lambda p: p[0], zip(self.detector.parameters())))
+            soft_estimation_supp = self.meta_detector(support_rx, 'train',
+                                                      para_list_detector)
+            loss_supp = self.calc_loss(soft_estimation=soft_estimation_supp,
+                                       transmitted_words=support_tx)
+
+            # set create_graph to True for MAML, False for FO-MAML
+            local_grad = torch.autograd.grad(loss_supp, para_list_detector, create_graph=False)
+            updated_para_list_detector = list(
+                map(lambda p: p[1] - self.lr * p[0], zip(local_grad, para_list_detector)))
+
+            # query words
+            query_rx = query_received_words[word_ind].reshape(1, -1)
+            query_tx = query_transmitted_words[word_ind].reshape(1, -1)
+
+            # meta-update (with query set) should be same channel with support set
+            soft_estimation_query = self.meta_detector(query_rx, 'train',
+                                                       updated_para_list_detector)
+            loss_query = self.calc_loss(soft_estimation=soft_estimation_query,
+                                        transmitted_words=query_tx)
+            meta_grad = torch.autograd.grad(loss_query, para_list_detector, create_graph=False)
+
+            ind_param = 0
+            for param in self.detector.parameters():
+                param.grad = None  # zero_grad
+                param.grad = meta_grad[ind_param]
+                ind_param += 1
+
+            self.optimizer.step()
+        return loss_query
 
     def train(self):
         """
