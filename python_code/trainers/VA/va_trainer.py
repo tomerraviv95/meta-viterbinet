@@ -32,7 +32,7 @@ class VATrainer(Trainer):
         self.detector = VADetector(n_states=self.n_states,
                                    memory_length=self.memory_length,
                                    transmission_length=self.transmission_lengths['val'],
-                                   val_words=self.val_words,
+                                   val_words=self.val_frames * self.subframes_in_frame,
                                    channel_type=self.channel_type,
                                    noisy_est_var=self.noisy_est_var,
                                    fading=self.fading_in_decoder)

@@ -33,6 +33,7 @@ class Trainer(object):
         self.noisy_est_var = None
         self.fading_in_channel = None
         self.fading_in_decoder = None
+        self.subframes_in_frame = None
 
         # gamma
         self.gamma_start = None
@@ -41,7 +42,7 @@ class Trainer(object):
 
         # validation hyperparameters
         self.val_block_length = None
-        self.val_words = None
+        self.val_frames = None
         self.val_SNR_start = None
         self.val_SNR_end = None
         self.val_SNR_step = None
@@ -49,7 +50,7 @@ class Trainer(object):
 
         # training hyperparameters
         self.train_block_length = None
-        self.train_words = None
+        self.train_frames = None
         self.train_minibatch_num = None
         self.train_minibatch_size = None
         self.train_SNR_start = None
@@ -87,6 +88,8 @@ class Trainer(object):
         self.initialize_dataloaders()
         self.initialize_detector()
         self.initialize_meta_detector()
+        self.data_indices = torch.Tensor(list(filter(lambda x: x % self.subframes_in_frame != 0,
+                                                     [i for i in range(self.val_frames * self.subframes_in_frame)])))
 
     def initialize_by_kwargs(self, **kwargs):
         for k, v in kwargs.items():
@@ -178,7 +181,7 @@ class Trainer(object):
         self.snr_range = {'train': np.arange(self.train_SNR_start, self.train_SNR_end + 1, step=self.train_SNR_step),
                           'val': np.arange(self.val_SNR_start, self.val_SNR_end + 1, step=self.val_SNR_step)}
         self.gamma_range = np.linspace(self.gamma_start, self.gamma_end, self.gamma_num)
-        self.words_per_phase = {'train': self.train_words, 'val': self.val_words}
+        self.frames_per_phase = {'train': self.train_frames, 'val': self.val_frames}
         self.block_lengths = {'train': self.train_block_length, 'val': self.val_block_length}
         self.transmission_lengths = {'train': self.train_block_length,
                                      'val': self.val_block_length if not self.use_ecc else self.val_block_length + 8 * self.n_symbols}
@@ -186,7 +189,7 @@ class Trainer(object):
             phase: ChannelModelDataset(channel_type=self.channel_type,
                                        block_length=self.block_lengths[phase],
                                        transmission_length=self.transmission_lengths[phase],
-                                       words=self.words_per_phase[phase],
+                                       words=self.frames_per_phase[phase] * self.subframes_in_frame,
                                        memory_length=self.memory_length,
                                        random=self.rand_gen,
                                        word_rand_gen=self.word_rand_gen,
@@ -220,7 +223,8 @@ class Trainer(object):
             decoded_words = [decode(detected_word, self.n_symbols) for detected_word in detected_words.cpu().numpy()]
             detected_words = torch.Tensor(decoded_words).to(device)
 
-        ser, fer, err_indices = calculate_error_rates(detected_words, transmitted_words)
+        ser, fer, err_indices = calculate_error_rates(detected_words[self.data_indices],
+                                                      transmitted_words[self.data_indices])
 
         return ser
 
@@ -260,29 +264,32 @@ class Trainer(object):
         ser_by_word = np.zeros(transmitted_words.shape[0])
         for count, (transmitted_word, received_word) in enumerate(zip(transmitted_words, received_words)):
             transmitted_word, received_word = transmitted_word.reshape(1, -1), received_word.reshape(1, -1)
-
             # detect
             detected_word = self.detector(received_word, 'val', snr, gamma)
+            if count in self.data_indices:
+                # decode
+                decoded_word = [decode(detected_word, self.n_symbols) for detected_word in detected_word.cpu().numpy()]
+                decoded_word = torch.Tensor(decoded_word).to(device)
 
-            # decode
-            decoded_word = [decode(detected_word, self.n_symbols) for detected_word in detected_word.cpu().numpy()]
-            decoded_word = torch.Tensor(decoded_word).to(device)
+                # calculate accuracy
+                ser, fer, err_indices = calculate_error_rates(decoded_word, transmitted_word)
 
-            # calculate accuracy
-            ser, fer, err_indices = calculate_error_rates(decoded_word, transmitted_word)
+                # encode word again
+                decoded_word_array = decoded_word.int().cpu().numpy()
+                encoded_word = torch.Tensor(encode(decoded_word_array, self.n_symbols).reshape(1, -1)).to(device)
+                errors_num = torch.sum(torch.abs(encoded_word - detected_word)).item()
+                print('*' * 20)
+                print(f'current: {count, ser, errors_num}')
 
-            # encode word again
-            decoded_word_array = decoded_word.int().cpu().numpy()
-            encoded_word = torch.Tensor(encode(decoded_word_array, self.n_symbols).reshape(1, -1)).to(device)
-            errors_num = torch.sum(torch.abs(encoded_word - detected_word)).item()
-            print('*' * 20)
-            print(f'current: {count, ser, errors_num}')
+                if self.self_supervised:
+                    self.online_training(detected_word, encoded_word, gamma, received_word, ser, snr)
 
-            if self.self_supervised:
-                self.online_training(detected_word, encoded_word, gamma, received_word, ser, snr)
+                total_ser += ser
+                ser_by_word[count] = ser
+            else:
+                if self.self_supervised:
+                    self.online_training(detected_word, transmitted_word, gamma, received_word, 0, snr)
 
-            total_ser += ser
-            ser_by_word[count] = ser
             if (count + 1) % 10 == 0:
                 print(f'Self-supervised: {count + 1}/{transmitted_words.shape[0]}, SER {total_ser / (count + 1)}')
         total_ser /= transmitted_words.shape[0]
@@ -326,15 +333,15 @@ class Trainer(object):
                         gamma=gamma)
 
                     # divide the words to following pairs - (support,query)
-                    even_idx = torch.arange(0, self.train_words, 2).long()
-                    odd_idx = torch.arange(1, self.train_words, 2).long()
+                    even_idx = torch.arange(0, self.train_frames * self.subframes_in_frame, 2).long()
+                    odd_idx = torch.arange(1, self.train_frames * self.subframes_in_frame, 2).long()
                     support_transmitted_words, support_received_words = transmitted_words[even_idx], received_words[
                         even_idx]
                     query_transmitted_words, query_received_words = transmitted_words[odd_idx], received_words[odd_idx]
                     loss_supp, loss_query = math.inf, math.inf
 
                     # meta-learning loop
-                    for word_ind in range(self.train_words // 2):
+                    for word_ind in range(self.train_frames * self.subframes_in_frame // 2):
                         # support words
                         support_rx = support_received_words[word_ind].reshape(1, -1)
                         support_tx = support_transmitted_words[word_ind].reshape(1, -1)
@@ -400,7 +407,7 @@ class Trainer(object):
                     transmitted_words, received_words = self.channel_dataset['train'].__getitem__(snr_list=[snr],
                                                                                                   gamma=gamma)
                     # run training loops
-                    for i in range(self.train_words):
+                    for i in range(self.train_frames * self.subframes_in_frame):
                         # pass through detector
                         soft_estimation = self.detector(received_words[i].reshape(1, -1), 'train')
                         current_loss = self.run_train_loop(soft_estimation, transmitted_words[i].reshape(1, -1))
