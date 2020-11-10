@@ -289,7 +289,7 @@ class Trainer(object):
 
                 total_ser += ser
                 ser_by_word[count] = ser
-                # savein buffer decoded word
+                # save decoded word in buffer
                 pseudo_transmitted = torch.cat([pseudo_transmitted, decoded_word])
             else:
                 # encode word again
@@ -297,7 +297,7 @@ class Trainer(object):
                 encoded_word = torch.Tensor(encode(decoded_word_array, self.n_symbols).reshape(1, -1)).to(device)
                 if self.self_supervised:
                     self.online_training(detected_word, encoded_word, received_word, 0)
-                # save in buffer the gt
+                # save the gt in buffer
                 pseudo_transmitted = torch.cat([pseudo_transmitted, transmitted_word])
 
             if (count + 1) % self.online_meta_subframes_buffer:
