@@ -13,6 +13,7 @@ import os
 from time import time
 import numpy as np
 import math
+import copy
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -65,7 +66,7 @@ class Trainer(object):
         self.self_supervised = None
         self.self_supervised_iterations = None
         self.ser_thresh = None
-        self.online_meta_subframes_buffer = None
+        self.online_meta = None
 
         # seed
         self.noise_seed = None
@@ -90,7 +91,8 @@ class Trainer(object):
         self.initialize_detector()
         self.initialize_meta_detector()
         self.data_indices = torch.Tensor(list(filter(lambda x: x % self.subframes_in_frame != 0,
-                                                     [i for i in range(self.val_frames * self.subframes_in_frame)])))
+                                                     [i for i in
+                                                      range(self.val_frames * self.subframes_in_frame)]))).long()
 
     def initialize_by_kwargs(self, **kwargs):
         for k, v in kwargs.items():
@@ -263,8 +265,8 @@ class Trainer(object):
         # self-supervised loop
         total_ser = 0
         ser_by_word = np.zeros(transmitted_words.shape[0])
-        self.saved_detector = self.detector.copy()
-        pseudo_transmitted = torch.empty([0, transmitted_words.shape[1]])
+        self.saved_detector = copy.deepcopy(self.detector)
+        pseudo_transmitted = torch.empty([0, received_words.shape[1]]).to(device)
         for count, (transmitted_word, received_word) in enumerate(zip(transmitted_words, received_words)):
             transmitted_word, received_word = transmitted_word.reshape(1, -1), received_word.reshape(1, -1)
             # detect
@@ -283,27 +285,23 @@ class Trainer(object):
                 errors_num = torch.sum(torch.abs(encoded_word - detected_word)).item()
                 print('*' * 20)
                 print(f'current: {count, ser, errors_num}')
-
                 if self.self_supervised:
                     self.online_training(detected_word, encoded_word, received_word, ser)
-
                 total_ser += ser
                 ser_by_word[count] = ser
-                # save decoded word in buffer
-                pseudo_transmitted = torch.cat([pseudo_transmitted, decoded_word])
             else:
                 # encode word again
                 decoded_word_array = transmitted_word.int().cpu().numpy()
                 encoded_word = torch.Tensor(encode(decoded_word_array, self.n_symbols).reshape(1, -1)).to(device)
                 if self.self_supervised:
                     self.online_training(detected_word, encoded_word, received_word, 0)
-                # save the gt in buffer
-                pseudo_transmitted = torch.cat([pseudo_transmitted, transmitted_word])
 
-            if (count + 1) % self.online_meta_subframes_buffer:
+            # save the encoded word in the buffer
+            pseudo_transmitted = torch.cat([pseudo_transmitted, encoded_word])
+            if self.online_meta and (count + 1) % (2 * self.subframes_in_frame) == 0:
                 print('meta-training')
-                self.meta_train_loop(received_words[:count + 1], pseudo_transmitted[1:])
-                self.saved_detector = self.detector.copy()
+                self.meta_train_loop(received_words[:count + 1], pseudo_transmitted)
+                self.saved_detector = copy.deepcopy(self.detector)
 
             if (count + 1) % 10 == 0:
                 print(f'Self-supervised: {count + 1}/{transmitted_words.shape[0]}, SER {total_ser / (count + 1)}')
@@ -318,6 +316,8 @@ class Trainer(object):
         # eval with training
         self.check_eval_mode()
         if self.eval_mode == 'by_word':
+            if not self.use_ecc:
+                raise ValueError('Only supports ecc')
             snr = self.snr_range['val'][0]
             gamma = self.gamma_range[0]
             self.load_weights(snr, gamma)
@@ -341,14 +341,11 @@ class Trainer(object):
                 self.deep_learning_setup()
                 best_ser = math.inf
                 for minibatch in range(1, self.train_minibatch_num + 1):
-
                     # draw words from different channels
                     transmitted_words, received_words = self.channel_dataset['train'].__getitem__(
                         snr_list=[snr],
                         gamma=gamma)
-
                     loss_query = self.meta_train_loop(received_words, transmitted_words)
-
                     if minibatch % self.print_every_n_train_minibatches == 0:
                         # evaluate performance
                         ser = self.single_eval_at_point(snr, gamma)
@@ -374,10 +371,8 @@ class Trainer(object):
 
             # local update (with support set)
             para_list_detector = list(map(lambda p: p[0], zip(self.detector.parameters())))
-            soft_estimation_supp = self.meta_detector(support_rx, 'train',
-                                                      para_list_detector)
-            loss_supp = self.calc_loss(soft_estimation=soft_estimation_supp,
-                                       transmitted_words=support_tx)
+            soft_estimation_supp = self.meta_detector(support_rx, 'train', para_list_detector)
+            loss_supp = self.calc_loss(soft_estimation=soft_estimation_supp, transmitted_words=support_tx)
 
             # set create_graph to True for MAML, False for FO-MAML
             local_grad = torch.autograd.grad(loss_supp, para_list_detector, create_graph=False)

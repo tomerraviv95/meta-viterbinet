@@ -54,7 +54,7 @@ class MetaLSTMTrainer(Trainer):
         :param received_word: the channel received word
         :param ser: calculated ser for the word
         """
-        self.detector = self.saved_detector.copy()
+        self.detector = copy.deepcopy(self.saved_detector)
         if ser <= self.ser_thresh:
             # run training loops
             for i in range(self.self_supervised_iterations):

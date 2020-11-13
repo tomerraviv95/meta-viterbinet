@@ -3,7 +3,7 @@ from python_code.detectors.VNET.vnet_detector import VNETDetector
 from python_code.utils.trellis_utils import calculate_states
 from python_code.trainers.trainer import Trainer
 import torch
-import os
+import copy
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -59,7 +59,7 @@ class METAVNETTrainer(Trainer):
         :param received_word: the channel received word
         :param ser: calculated ser for the word
         """
-        self.detector = self.saved_detector.copy()
+        self.detector = copy.deepcopy(self.saved_detector)
         if ser <= self.ser_thresh:
             # run training loops
             for i in range(self.self_supervised_iterations):
