@@ -3,6 +3,8 @@ from python_code.detectors.LSTM.lstm_detector import LSTMDetector
 from python_code.trainers.trainer import Trainer
 import torch
 
+from python_code.utils.python_utils import copy_model
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
@@ -54,7 +56,7 @@ class MetaLSTMTrainer(Trainer):
         :param received_word: the channel received word
         :param ser: calculated ser for the word
         """
-        self.detector = copy.deepcopy(self.saved_detector)
+        copy_model(source_model=self.saved_detector, dest_model=self.detector)
         if ser <= self.ser_thresh:
             # run training loops
             for i in range(self.self_supervised_iterations):

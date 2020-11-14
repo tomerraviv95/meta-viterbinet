@@ -1,5 +1,8 @@
+import pickle
+
 from python_code.detectors.META_VNET.meta_vnet_detector import META_VNETDetector
 from python_code.detectors.VNET.vnet_detector import VNETDetector
+from python_code.utils.python_utils import copy_model
 from python_code.utils.trellis_utils import calculate_states
 from python_code.trainers.trainer import Trainer
 import torch
@@ -59,7 +62,7 @@ class METAVNETTrainer(Trainer):
         :param received_word: the channel received word
         :param ser: calculated ser for the word
         """
-        self.detector = copy.deepcopy(self.saved_detector)
+        copy_model(source_model=self.saved_detector, dest_model=self.detector)
         if ser <= self.ser_thresh:
             # run training loops
             for i in range(self.self_supervised_iterations):

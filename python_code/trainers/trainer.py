@@ -15,7 +15,10 @@ import numpy as np
 import math
 import copy
 
+from python_code.utils.python_utils import copy_model
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+ONLINE_META_FRAMES = 1
 
 
 class Trainer(object):
@@ -260,13 +263,16 @@ class Trainer(object):
     def eval_by_word(self, snr: float, gamma: float) -> Union[float, np.ndarray]:
         if self.self_supervised:
             self.deep_learning_setup()
+
+        total_ser = 0
         # draw words of given gamma for all snrs
         transmitted_words, received_words = self.channel_dataset['val'].__getitem__(snr_list=[snr], gamma=gamma)
-        # self-supervised loop
-        total_ser = 0
         ser_by_word = np.zeros(transmitted_words.shape[0])
+        # saved detector is used to initialize the decoder in meta learning loops
         self.saved_detector = copy.deepcopy(self.detector)
+        # query for all detected words
         pseudo_transmitted = torch.empty([0, received_words.shape[1]]).to(device)
+
         for count, (transmitted_word, received_word) in enumerate(zip(transmitted_words, received_words)):
             transmitted_word, received_word = transmitted_word.reshape(1, -1), received_word.reshape(1, -1)
             # detect
@@ -275,10 +281,8 @@ class Trainer(object):
                 # decode
                 decoded_word = [decode(detected_word, self.n_symbols) for detected_word in detected_word.cpu().numpy()]
                 decoded_word = torch.Tensor(decoded_word).to(device)
-
                 # calculate accuracy
                 ser, fer, err_indices = calculate_error_rates(decoded_word, transmitted_word)
-
                 # encode word again
                 decoded_word_array = decoded_word.int().cpu().numpy()
                 encoded_word = torch.Tensor(encode(decoded_word_array, self.n_symbols).reshape(1, -1)).to(device)
@@ -298,10 +302,10 @@ class Trainer(object):
 
             # save the encoded word in the buffer
             pseudo_transmitted = torch.cat([pseudo_transmitted, encoded_word])
-            if self.online_meta and (count + 1) % (2 * self.subframes_in_frame) == 0:
+            if self.online_meta and (count + 1) % (ONLINE_META_FRAMES * self.subframes_in_frame) == 0:
                 print('meta-training')
                 self.meta_train_loop(received_words[:count + 1], pseudo_transmitted)
-                self.saved_detector = copy.deepcopy(self.detector)
+                copy_model(source_model=self.detector, dest_model=self.saved_detector)
 
             if (count + 1) % 10 == 0:
                 print(f'Self-supervised: {count + 1}/{transmitted_words.shape[0]}, SER {total_ser / (count + 1)}')
