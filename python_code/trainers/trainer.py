@@ -34,6 +34,7 @@ class Trainer(object):
         # channel
         self.memory_length = None
         self.channel_type = None
+        self.channel_coefficients = None
         self.noisy_est_var = None
         self.fading_in_channel = None
         self.fading_in_decoder = None
@@ -197,6 +198,7 @@ class Trainer(object):
                                        transmission_length=self.transmission_lengths[phase],
                                        words=self.frames_per_phase[phase] * self.subframes_in_frame,
                                        memory_length=self.memory_length,
+                                       channel_coefficients=self.channel_coefficients,
                                        random=self.rand_gen,
                                        word_rand_gen=self.word_rand_gen,
                                        noisy_est_var=self.noisy_est_var,

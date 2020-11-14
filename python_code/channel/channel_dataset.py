@@ -24,6 +24,7 @@ class ChannelModelDataset(Dataset):
                  transmission_length: int,
                  words: int,
                  memory_length: int,
+                 channel_coefficients: str,
                  random: mtrand.RandomState,
                  word_rand_gen: mtrand.RandomState,
                  noisy_est_var: float,
@@ -40,6 +41,7 @@ class ChannelModelDataset(Dataset):
         self.channel_type = channel_type
         self.words = words
         self.memory_length = memory_length
+        self.channel_coefficients = channel_coefficients
         self.noisy_est_var = noisy_est_var
         self.fading_in_channel = fading_in_channel
         self.fading_in_decoder = fading_in_decoder
@@ -69,6 +71,7 @@ class ChannelModelDataset(Dataset):
             padded_c = np.concatenate([c, np.zeros([c.shape[0], self.memory_length])], axis=1)
             # transmit
             h = estimate_channel(self.memory_length, gamma,
+                                 channel_coefficients = self.channel_coefficients,
                                  noisy_est_var=self.noisy_est_var,
                                  fading=self.fading_in_channel if self.phase == 'val' else self.fading_in_decoder,
                                  index=index)
@@ -91,6 +94,11 @@ class ChannelModelDataset(Dataset):
             s = OnOffModulator.modulate(c)
             # transmit through noisy channel
             y = PoissonChannel.transmit(s=s, random=self.random, h=h, snr=snr, memory_length=self.memory_length)
+        elif self.channel_type == 'COST2100':
+            # modulation
+            s = BPSKModulator.modulate(c)
+            # transmit through noisy channel
+            y = COST2100Channel.transmit(s=s, random=self.random, h=h, snr=snr, memory_length=self.memory_length)
         else:
             raise Exception('No such channel defined!!!')
         return y
