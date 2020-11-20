@@ -1,12 +1,9 @@
-import pickle
-
 from python_code.detectors.META_VNET.meta_vnet_detector import META_VNETDetector
 from python_code.detectors.VNET.vnet_detector import VNETDetector
 from python_code.utils.python_utils import copy_model
 from python_code.utils.trellis_utils import calculate_states
 from python_code.trainers.trainer import Trainer
 import torch
-import copy
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

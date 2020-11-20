@@ -306,7 +306,9 @@ class Trainer(object):
             pseudo_transmitted = torch.cat([pseudo_transmitted, encoded_word])
             if self.online_meta and (count + 1) % (ONLINE_META_FRAMES * self.subframes_in_frame) == 0:
                 print('meta-training')
-                self.meta_train_loop(received_words[:count + 1], pseudo_transmitted)
+                self.meta_train_loop(received_words[count + 1 - ONLINE_META_FRAMES * self.subframes_in_frame:count + 1],
+                                     pseudo_transmitted[
+                                     count + 1 - ONLINE_META_FRAMES * self.subframes_in_frame:count + 1])
                 copy_model(source_model=self.detector, dest_model=self.saved_detector)
 
             if (count + 1) % 10 == 0:
