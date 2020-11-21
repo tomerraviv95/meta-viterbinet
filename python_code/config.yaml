@@ -3,7 +3,7 @@ run_name: 'meta_training_200'
 
 # coding parameters
 use_ecc: True # True, False
-n_symbols: 3
+n_symbols: 5
 
 # channel
 memory_length: 4
@@ -31,7 +31,7 @@ eval_mode: 'by_word' # 'aggregated','by_word'
 train_block_length: 200
 train_frames: 5
 train_minibatch_num: 100
-train_minibatch_size: 32
+train_minibatch_size: 64
 train_SNR_start: 12
 train_SNR_end: 12
 train_SNR_step: 2
