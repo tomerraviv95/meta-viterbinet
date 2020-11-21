@@ -48,4 +48,4 @@ word_seed: 7860002
 self_supervised: True # True, False
 self_supervised_iterations: 500
 ser_thresh: 0.02
-online_meta: True # False, True
+online_meta: False # False, True
