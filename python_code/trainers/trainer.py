@@ -274,6 +274,9 @@ class Trainer(object):
         # query for all detected words
         buffer_transmitted = torch.empty([0, received_words.shape[1]]).to(device)
         buffer_received = torch.empty([0, received_words.shape[1]]).to(device)
+        prev_ser = 1
+        support_idx = torch.empty([0]).long().to(device)
+        query_idx = torch.empty([0]).long().to(device)
         for count, (transmitted_word, received_word) in enumerate(zip(transmitted_words, received_words)):
             transmitted_word, received_word = transmitted_word.reshape(1, -1), received_word.reshape(1, -1)
             # detect
@@ -295,6 +298,8 @@ class Trainer(object):
                 total_ser += ser
                 ser_by_word[count] = ser
             else:
+                print('*' * 20)
+                print(f'current: {count}, Pilot')
                 # encode word again
                 decoded_word_array = transmitted_word.int().cpu().numpy()
                 encoded_word = torch.Tensor(encode(decoded_word_array, self.n_symbols).reshape(1, -1)).to(device)
@@ -303,16 +308,26 @@ class Trainer(object):
                     self.online_training(detected_word, encoded_word, received_word, ser)
 
             # save the encoded word in the buffer
-            if ser <= self.ser_thresh:
-                buffer_transmitted = torch.cat([buffer_transmitted, encoded_word])
-                buffer_received = torch.cat([buffer_received, received_word])
+            buffer_transmitted = torch.cat([buffer_transmitted, encoded_word])
+            buffer_received = torch.cat([buffer_received, received_word])
 
-            if self.online_meta and (count + 1) % (ONLINE_META_FRAMES * self.subframes_in_frame) == 0:
+            # save relevant support and query indices
+            if self.online_meta and ser <= self.ser_thresh:
+                if prev_ser <= self.ser_thresh:
+                    support_idx = torch.cat([support_idx, torch.LongTensor([count - 1]).to(device)])
+                else:
+                    support_idx = torch.cat([support_idx, torch.LongTensor([count]).to(device)])
+                query_idx = torch.cat([query_idx, torch.LongTensor([count]).to(device)])
+
+            if self.online_meta and (count) % (ONLINE_META_FRAMES * self.subframes_in_frame) == 0:
                 print('meta-training')
                 self.initialize_detector()
                 self.deep_learning_setup()
-                self.meta_train_loop(buffer_received[-self.subframes_in_frame:],
-                                     buffer_transmitted[-self.subframes_in_frame:])
+                last_x_mask = query_idx >= count + 1 - self.subframes_in_frame
+                print(support_idx[last_x_mask], query_idx[last_x_mask])
+                for i in range(50):
+                    self.meta_train_loop(buffer_received, buffer_transmitted,
+                                         support_idx[last_x_mask], query_idx[last_x_mask])
                 copy_model(source_model=self.detector, dest_model=self.saved_detector)
                 # don't forget to adapt the bias for current iteration
                 if self.self_supervised:
@@ -320,6 +335,8 @@ class Trainer(object):
 
             if (count + 1) % 10 == 0:
                 print(f'Self-supervised: {count + 1}/{transmitted_words.shape[0]}, SER {total_ser / (count + 1)}')
+            prev_ser = ser
+
         total_ser /= transmitted_words.shape[0]
         print(f'Final ser: {total_ser}')
         return ser_by_word
@@ -360,7 +377,9 @@ class Trainer(object):
                     transmitted_words, received_words = self.channel_dataset['train'].__getitem__(
                         snr_list=[snr],
                         gamma=gamma)
-                    loss_query = self.meta_train_loop(received_words, transmitted_words)
+                    support_idx = torch.arange(0, transmitted_words.shape[0] - 1).long()
+                    query_idx = torch.arange(1, transmitted_words.shape[0]).long()
+                    loss_query = self.meta_train_loop(received_words, transmitted_words, support_idx, query_idx)
                     if minibatch % self.print_every_n_train_minibatches == 0:
                         # evaluate performance
                         ser = self.single_eval_at_point(snr, gamma)
@@ -370,16 +389,14 @@ class Trainer(object):
                             self.save_weights(float(loss_query), snr, gamma)
                             best_ser = ser
 
-    def meta_train_loop(self, received_words: torch.Tensor, transmitted_words: torch.Tensor):
+    def meta_train_loop(self, received_words: torch.Tensor, transmitted_words: torch.Tensor, support_idx, query_idx):
         # divide the words to following pairs - (support,query)
-        even_idx = torch.arange(0, transmitted_words.shape[0] - 1).long()
-        odd_idx = torch.arange(1, transmitted_words.shape[0]).long()
-        support_transmitted_words, support_received_words = transmitted_words[even_idx], received_words[
-            even_idx]
-        query_transmitted_words, query_received_words = transmitted_words[odd_idx], received_words[odd_idx]
+        support_transmitted_words, support_received_words = transmitted_words[support_idx], received_words[
+            support_idx]
+        query_transmitted_words, query_received_words = transmitted_words[query_idx], received_words[query_idx]
         loss_supp, loss_query = math.inf, math.inf
         # meta-learning loop
-        for word_ind in range(transmitted_words.shape[0] - 1):
+        for word_ind in range(support_idx.shape[0]):
             # support words
             support_rx = support_received_words[word_ind].reshape(1, -1)
             support_tx = support_transmitted_words[word_ind].reshape(1, -1)
@@ -412,6 +429,7 @@ class Trainer(object):
                 ind_param += 1
 
             self.optimizer.step()
+
         return loss_query
 
     def train(self):
