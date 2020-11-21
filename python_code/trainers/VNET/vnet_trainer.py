@@ -56,13 +56,12 @@ class VNETTrainer(Trainer):
         :param received_word: the channel received word
         :param ser: calculated ser for the word
         """
-        if ser <= self.ser_thresh:
-            # run training loops
-            for i in range(self.self_supervised_iterations):
-                # calculate soft values
-                soft_estimation = self.detector(received_word, 'train')
-                labels = detected_word if ser > 0 else encoded_word
-                self.run_train_loop(soft_estimation=soft_estimation, transmitted_words=labels)
+        # run training loops
+        for i in range(self.self_supervised_iterations):
+            # calculate soft values
+            soft_estimation = self.detector(received_word, 'train')
+            labels = detected_word if ser > 0 else encoded_word
+            self.run_train_loop(soft_estimation=soft_estimation, transmitted_words=labels)
 
 
 if __name__ == '__main__':
