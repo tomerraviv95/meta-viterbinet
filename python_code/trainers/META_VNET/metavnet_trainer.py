@@ -78,13 +78,13 @@ class METAVNETTrainer(Trainer):
             labels = detected_word if ser > 0 else encoded_word
             self.run_train_loop(soft_estimation=soft_estimation, transmitted_words=labels)
             for f in range(1, self.subframes_in_frame + 1):
-                prev_ind = count - f
-                if prev_ind >= 0:
-                    # calculate soft values
-                    soft_estimation = self.detector(buffer_received[prev_ind].reshape(1, -1), 'train')
-                    labels = buffer_detected[prev_ind].reshape(1, -1) if ser > 0 else buffer_encoded[prev_ind].reshape(
-                        1, -1)
-                    self.run_train_loop(soft_estimation=soft_estimation, transmitted_words=labels)
+                if f > buffer_detected.shape[0]:
+                    break
+                # calculate soft values
+                soft_estimation = self.detector(buffer_received[-f].reshape(1, -1), 'train')
+                labels = buffer_detected[-f].reshape(1, -1) if ser > 0 else buffer_encoded[-f].reshape(
+                    1, -1)
+                self.run_train_loop(soft_estimation=soft_estimation, transmitted_words=labels)
 
 
 if __name__ == '__main__':
