@@ -312,15 +312,13 @@ class Trainer(object):
 
             # save relevant support and query indices
             if self.online_meta and ser <= self.ser_thresh:
-                # if ser_by_word[count - 1] <= self.ser_thresh and count > 0:
-                #     support_idx = torch.cat([support_idx, torch.LongTensor([count - 1]).to(device)])
-                # else:
-                support_idx = torch.cat([support_idx, torch.LongTensor([count]).to(device)])
-                query_idx = torch.cat([query_idx, torch.LongTensor([count]).to(device)])
+                # support_idx = torch.cat([support_idx, torch.LongTensor([count]).to(device)])
+                # query_idx = torch.cat([query_idx, torch.LongTensor([count]).to(device)])
                 if count > 0:
-                    for i in range(self.subframes_in_frame - 1):
-                        if ser_by_word[count - 1 - i] <= self.ser_thresh:
-                            support_idx = torch.cat([support_idx, torch.LongTensor([count - 1 - i]).to(device)])
+                    for i in range(1, self.subframes_in_frame + 1):
+                        prev_indice = count - i
+                        if ser_by_word[prev_indice] <= self.ser_thresh:
+                            support_idx = torch.cat([support_idx, torch.LongTensor([prev_indice]).to(device)])
                             query_idx = torch.cat([query_idx, torch.LongTensor([count]).to(device)])
 
             if self.online_meta and count % (ONLINE_META_FRAMES * self.subframes_in_frame) == 0:
@@ -328,7 +326,7 @@ class Trainer(object):
                 self.initialize_detector()
                 # self.compare_parameters(self.saved_detector, self.detector)
                 self.deep_learning_setup()
-                last_x_mask = query_idx >= count # + 1 - self.subframes_in_frame
+                last_x_mask = query_idx >= count  # + 1 - self.subframes_in_frame
                 print(support_idx[last_x_mask], query_idx[last_x_mask])
                 META_TRAINING_ITER = 250
                 for i in range(META_TRAINING_ITER):
