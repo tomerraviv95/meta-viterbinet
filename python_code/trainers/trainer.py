@@ -71,6 +71,8 @@ class Trainer(object):
         self.self_supervised_iterations = None
         self.ser_thresh = None
         self.online_meta = None
+        self.weights_init = None
+        self.window = None
 
         # seed
         self.noise_seed = None
@@ -300,7 +302,6 @@ class Trainer(object):
                 print(f'current: {count, ser, errors_num}')
                 total_ser += ser
                 ser_by_word[count] = ser
-
             else:
                 print('*' * 20)
                 print(f'current: {count}, Pilot')
@@ -315,15 +316,19 @@ class Trainer(object):
                 buffer_encoded = torch.cat([buffer_encoded, encoded_word])
                 buffer_received = torch.cat([buffer_received, received_word])
 
-            if self.self_supervised and ser <= self.ser_thresh:
-                self.windowed_online_training(buffer_detected, buffer_received, buffer_encoded, count,
-                                              detected_word, encoded_word, received_word, ser)
-                # self.online_training(detected_word, encoded_word, received_word, ser)
-
             if self.online_meta and count % (ONLINE_META_FRAMES * self.subframes_in_frame) == 0:
                 print('meta-training')
-                self.initialize_detector()
-                self.deep_learning_setup()
+                if self.weights_init == 'random':
+                    self.initialize_detector()
+                    self.deep_learning_setup()
+                elif self.weights_init == 'last_frame':
+                    copy_model(source_model=self.saved_detector, dest_model=self.detector)
+                elif self.weights_init == 'meta_training':
+                    snr = self.snr_range['val'][0]
+                    gamma = self.gamma_range[0]
+                    self.load_weights(snr, gamma)
+                else:
+                    raise ValueError('No such weights inint')
                 print(support_idx, query_idx)
                 META_TRAINING_ITER = 250
                 if count > 0:
@@ -331,12 +336,13 @@ class Trainer(object):
                         self.meta_train_loop(buffer_received, buffer_encoded,
                                              support_idx, query_idx)
                 copy_model(source_model=self.detector, dest_model=self.saved_detector)
-                # adapt bias for current iteration
-                if self.self_supervised:
+
+            if self.self_supervised and ser <= self.ser_thresh:
+                if self.window:
                     self.windowed_online_training(buffer_detected, buffer_received, buffer_encoded, count,
-                                                  detected_word, encoded_word,
-                                                  received_word, ser)
-                    # self.online_training(detected_word, encoded_word, received_word, ser)
+                                              detected_word, encoded_word, received_word, ser)
+                else:
+                    self.online_training(detected_word, encoded_word, received_word, ser)
 
             if (count + 1) % 10 == 0:
                 print(f'Self-supervised: {count + 1}/{transmitted_words.shape[0]}, SER {total_ser / (count + 1)}')
