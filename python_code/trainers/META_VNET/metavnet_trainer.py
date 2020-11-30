@@ -67,24 +67,13 @@ class METAVNETTrainer(Trainer):
             labels = detected_word if ser > 0 else encoded_word
             self.run_train_loop(soft_estimation=soft_estimation, transmitted_words=labels)
 
-    def windowed_online_training(self, buffer_detected, buffer_received, buffer_encoded, count, detected_word,
-                                 encoded_word,
-                                 received_word, ser):
+    def windowed_online_training(self, buffer_tx, buffer_rx):
         copy_model(source_model=self.saved_detector, dest_model=self.detector)
         # run training loops
         for i in range(self.self_supervised_iterations):
             # calculate soft values
-            soft_estimation = self.detector(received_word, 'train')
-            labels = detected_word if ser > 0 else encoded_word
-            self.run_train_loop(soft_estimation=soft_estimation, transmitted_words=labels)
-            for f in range(1, self.subframes_in_frame + 1):
-                if f > buffer_detected.shape[0]:
-                    break
-                # calculate soft values
-                soft_estimation = self.detector(buffer_received[-f].reshape(1, -1), 'train')
-                labels = buffer_detected[-f].reshape(1, -1) if ser > 0 else buffer_encoded[-f].reshape(
-                    1, -1)
-                self.run_train_loop(soft_estimation=soft_estimation, transmitted_words=labels)
+            soft_estimation = self.detector(buffer_rx, 'train')
+            self.run_train_loop(soft_estimation=soft_estimation, transmitted_words=buffer_tx)
 
 
 if __name__ == '__main__':
