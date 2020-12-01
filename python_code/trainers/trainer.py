@@ -19,6 +19,7 @@ from python_code.utils.python_utils import copy_model
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 ONLINE_META_FRAMES = 1
+META_J_NUM = 10
 
 
 class Trainer(object):
@@ -283,7 +284,7 @@ class Trainer(object):
         buffer_tx = torch.empty([0, received_words.shape[1]]).to(device)
         buffer_ser = torch.empty([0]).to(device)
         support_idx = -1 * torch.arange(self.subframes_in_frame, 0, -1).long().to(device) - 1
-        query_idx = -1 * torch.ones(self.subframes_in_frame).long().to(device)
+        query_idx = -1 * torch.ones(1).long().to(device)
         online_idx = -1 * torch.arange(self.subframes_in_frame - 1, -1, -1).long().to(device) - 1
         for count, (transmitted_word, received_word) in enumerate(zip(transmitted_words, received_words)):
             transmitted_word, received_word = transmitted_word.reshape(1, -1), received_word.reshape(1, -1)
@@ -322,9 +323,8 @@ class Trainer(object):
                 print('meta-training')
                 self.meta_weights_init()
                 # print(support_idx, query_idx)
-                META_TRAINING_ITER = 5
+                META_TRAINING_ITER = 25
                 if count >= self.subframes_in_frame:
-                    META_J_NUM = 1
                     j_hat_values = torch.unique(
                         torch.randint(low=self.subframes_in_frame, high=buffer_rx.shape[0], size=[META_J_NUM])).to(
                         device)
@@ -394,12 +394,19 @@ class Trainer(object):
                 best_ser = math.inf
                 for minibatch in range(1, self.train_minibatch_num + 1):
                     # draw words from different channels
-                    transmitted_words, received_words = self.channel_dataset['train'].__getitem__(
-                        snr_list=[snr],
-                        gamma=gamma)
-                    support_idx = torch.arange(0, transmitted_words.shape[0] - 1).long()
-                    query_idx = torch.arange(1, transmitted_words.shape[0]).long()
-                    loss_query = self.meta_train_loop(received_words, transmitted_words, support_idx, query_idx)
+                    transmitted_words, received_words = self.channel_dataset['train'].__getitem__(snr_list=[snr],
+                                                                                                  gamma=gamma)
+                    support_idx = -1 * torch.arange(self.subframes_in_frame, 0, -1).long().to(device) - 1
+                    query_idx = -1 * torch.ones(1).long().to(device)
+                    j_hat_values = torch.unique(torch.randint(low=self.subframes_in_frame,
+                                                              high=transmitted_words.shape[0],
+                                                              size=[META_J_NUM])).to(device)
+                    loss_query = 0
+                    for j_hat in j_hat_values:
+                        cur_support_idx = j_hat + support_idx + 1
+                        cur_query_idx = j_hat + query_idx + 1
+                        loss_query += self.meta_train_loop(received_words, transmitted_words, cur_support_idx,
+                                                           cur_query_idx)
                     if minibatch % self.print_every_n_train_minibatches == 0:
                         # evaluate performance
                         ser = self.single_eval_at_point(snr, gamma)
@@ -409,7 +416,8 @@ class Trainer(object):
                             self.save_weights(float(loss_query), snr, gamma)
                             best_ser = ser
 
-    def meta_train_loop(self, received_words: torch.Tensor, transmitted_words: torch.Tensor, support_idx, query_idx):
+    def meta_train_loop(self, received_words: torch.Tensor, transmitted_words: torch.Tensor,
+                        support_idx: torch.Tensor, query_idx: torch.Tensor):
         # divide the words to following pairs - (support,query)
         support_tx, support_rx = transmitted_words[support_idx], received_words[support_idx]
         query_tx, query_rx = transmitted_words[query_idx], received_words[query_idx]
@@ -436,7 +444,6 @@ class Trainer(object):
             ind_param += 1
 
         self.optimizer.step()
-
         return loss_query
 
     def train(self):

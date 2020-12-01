@@ -52,4 +52,4 @@ meta_lr: 0.1
 MAML: True # False, True
 online_meta: False # False, True
 weights_init: 'last_frame'# 'random','last_frame','meta_training'
-window: False # False, True
+window: True # False, True
