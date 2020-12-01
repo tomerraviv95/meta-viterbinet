@@ -283,7 +283,7 @@ class Trainer(object):
         buffer_rx = torch.empty([0, received_words.shape[1]]).to(device)
         buffer_tx = torch.empty([0, received_words.shape[1]]).to(device)
         buffer_ser = torch.empty([0]).to(device)
-        support_idx = -1 * torch.arange(self.subframes_in_frame, 0, -1).long().to(device) - 1
+        support_idx = -2 * torch.ones(1).long().to(device) # -1 * torch.arange(self.subframes_in_frame, 0, -1).long().to(device) - 1
         query_idx = -1 * torch.ones(1).long().to(device)
         online_idx = -1 * torch.arange(self.subframes_in_frame - 1, -1, -1).long().to(device) - 1
         for count, (transmitted_word, received_word) in enumerate(zip(transmitted_words, received_words)):
@@ -396,7 +396,7 @@ class Trainer(object):
                     # draw words from different channels
                     transmitted_words, received_words = self.channel_dataset['train'].__getitem__(snr_list=[snr],
                                                                                                   gamma=gamma)
-                    support_idx = -1 * torch.arange(self.subframes_in_frame, 0, -1).long().to(device) - 1
+                    support_idx = -2 * torch.ones(1).long().to(device) # -1 * torch.arange(self.subframes_in_frame, 0, -1).long().to(device) - 1
                     query_idx = -1 * torch.ones(1).long().to(device)
                     j_hat_values = torch.unique(torch.randint(low=self.subframes_in_frame,
                                                               high=transmitted_words.shape[0],
