@@ -1,5 +1,5 @@
 # general
-run_name: 'meta_training_200'
+run_name: 'meta_training_200_5_channel1'
 
 # coding parameters
 use_ecc: True # True, False
@@ -12,6 +12,7 @@ channel_coefficients: 'time_decay' # 'time_decay','cost2100'
 noisy_est_var: 0 # 0, 0.1 for ISI_AWGN, 0.08 for Poisson
 fading_in_channel: True # True, False
 fading_in_decoder: False # True, False
+fading_taps_type: 1 # 1 or 2
 subframes_in_frame: 5
 
 # gamma values
@@ -21,23 +22,23 @@ gamma_num: 1
 
 # validation hyperparameters
 val_block_length: 200
-val_frames: 20
+val_frames: 40
 val_SNR_start: 12
 val_SNR_end: 12
 val_SNR_step: 2
-eval_mode: 'by_word' # 'aggregated','by_word'
+eval_mode: 'aggregated' # 'aggregated','by_word'
 
 # train hyperparameters
 train_block_length: 200
-train_frames: 5
-train_minibatch_num: 100
-train_minibatch_size: 64
+train_frames: 50
+train_minibatch_num: 10
+train_minibatch_size: 128
 train_SNR_start: 12
 train_SNR_end: 12
 train_SNR_step: 2
 lr: 0.001 # learning rate
 loss_type: 'CrossEntropy' # 'BCE','CrossEntropy','MSE'
-print_every_n_train_minibatches: 5
+print_every_n_train_minibatches: 1
 optimizer_type: 'Adam' # 'Adam','RMSprop','SGD'
 
 # seed
@@ -45,11 +46,11 @@ noise_seed: 3450002
 word_seed: 7860002
 
 # self-supervised online training
-self_supervised: True # True, False
-self_supervised_iterations: 250
+self_supervised: False # True, False
+self_supervised_iterations: 200
 ser_thresh: 0.02
 meta_lr: 0.1
 MAML: True # False, True
 online_meta: False # False, True
-weights_init: 'last_frame'# 'random','last_frame','meta_training'
-window: True # False, True
+weights_init: 'last_frame' # 'random','last_frame','meta_training'
+window_size: 1

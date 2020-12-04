@@ -28,6 +28,7 @@ class ChannelModelDataset(Dataset):
                  random: mtrand.RandomState,
                  word_rand_gen: mtrand.RandomState,
                  noisy_est_var: float,
+                 fading_taps_type: int,
                  use_ecc: bool,
                  n_symbols: int,
                  fading_in_channel: bool,
@@ -43,11 +44,12 @@ class ChannelModelDataset(Dataset):
         self.memory_length = memory_length
         self.channel_coefficients = channel_coefficients
         self.noisy_est_var = noisy_est_var
+        self.fading_taps_type = fading_taps_type
         self.fading_in_channel = fading_in_channel
         self.fading_in_decoder = fading_in_decoder
         self.n_symbols = n_symbols
         self.phase = phase
-        if use_ecc and phase == 'val':
+        if use_ecc:
             self.encoding = lambda b: encode(b, self.n_symbols)
         else:
             self.encoding = lambda b: b
@@ -71,10 +73,11 @@ class ChannelModelDataset(Dataset):
             padded_c = np.concatenate([c, np.zeros([c.shape[0], self.memory_length])], axis=1)
             # transmit
             h = estimate_channel(self.memory_length, gamma,
-                                 channel_coefficients = self.channel_coefficients,
+                                 channel_coefficients=self.channel_coefficients,
                                  noisy_est_var=self.noisy_est_var,
                                  fading=self.fading_in_channel if self.phase == 'val' else self.fading_in_decoder,
-                                 index=index)
+                                 index=index,
+                                 fading_taps_type=self.fading_taps_type)
             y = self.transmit(padded_c, h, snr)
             # accumulate
             b_full = np.concatenate((b_full, b), axis=0)

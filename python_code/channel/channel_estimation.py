@@ -5,7 +5,7 @@ import os
 
 
 def estimate_channel(memory_length: int, gamma: float, channel_coefficients: str, noisy_est_var: float = 0,
-                     fading: bool = False, index: int = 0):
+                     fading: bool = False, index: int = 0, fading_taps_type: int = 1):
     """
     Returns the coefficients vector estimated from channel
     :param memory_length: memory length of channel
@@ -21,7 +21,7 @@ def estimate_channel(memory_length: int, gamma: float, channel_coefficients: str
     elif channel_coefficients == 'cost2100':
         total_h = np.empty([100, memory_length])
         for i in range(memory_length):
-            total_h[:, i] = scipy.io.loadmat(os.path.join(COST2100_DIR, f'h_{0.02*(i+1)}'))[
+            total_h[:, i] = scipy.io.loadmat(os.path.join(COST2100_DIR, f'h_{0.02 * (i + 1)}'))[
                 'h_channel_response_mag'].reshape(-1)
         # scale min-max values of h to the range 0-1
         total_h = (total_h - total_h.min()) / (total_h.max() - total_h.min())
@@ -33,7 +33,11 @@ def estimate_channel(memory_length: int, gamma: float, channel_coefficients: str
         h[:, 1:] += np.random.normal(0, noisy_est_var ** 0.5, [1, memory_length - 1])
     # fading in channel taps
     if fading:
-        # fading_taps = np.array([51, 39, 33, 21])
-        fading_taps = np.array([40, 32, 25, 15])
+        if fading_taps_type == 1:
+            fading_taps = np.array([51, 39, 33, 21])
+        elif fading_taps_type == 2:
+            fading_taps = np.array([40, 32, 25, 15])
+        else:
+            raise ValueError("No such fading tap type!!!")
         h *= (0.8 + 0.2 * np.cos(2 * np.pi * index / fading_taps)).reshape(1, memory_length)
     return h
