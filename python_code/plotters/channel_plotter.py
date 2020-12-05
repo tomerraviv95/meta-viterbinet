@@ -25,7 +25,7 @@ elif channel_coefficients == 'time_decay':
 else:
     raise ValueError("No such channel coefficients!!!")
 for i in range(memory_length):
-    plt.plot(total_h[:, memory_length - i - 1], label=f'Tap {i + 1}')
+    plt.plot(total_h[:, memory_length - i - 1], label=f'Tap {memory_length - i}')
 plt.title('Channel Magnitude versus Block Index')
 plt.xlabel('Block Index')
 plt.ylabel('Magnitude')
