@@ -19,7 +19,8 @@ from python_code.utils.python_utils import copy_model
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 ONLINE_META_FRAMES = 1
-META_J_NUM = 100
+META_J_NUM = 10
+META_TRAINING_ITER = 10
 
 
 class Trainer(object):
@@ -211,7 +212,7 @@ class Trainer(object):
                                        noisy_est_var=self.noisy_est_var,
                                        use_ecc=self.use_ecc,
                                        n_symbols=self.n_symbols,
-                                       fading_taps_type = self.fading_taps_type,
+                                       fading_taps_type=self.fading_taps_type,
                                        fading_in_channel=self.fading_in_channel,
                                        fading_in_decoder=self.fading_in_decoder,
                                        phase=phase)
@@ -279,19 +280,21 @@ class Trainer(object):
         # saved detector is used to initialize the decoder in meta learning loops
         self.saved_detector = copy.deepcopy(self.detector)
         # query for all detected words
-        buffer_rx = torch.empty([0, received_words.shape[1]]).to(device)
-        buffer_tx = torch.empty([0, received_words.shape[1]]).to(device)
-        buffer_ser = torch.empty([0]).to(device)
+        BUFFER_EMPTY = False
+        if BUFFER_EMPTY:
+            buffer_rx = torch.empty([0, received_words.shape[1]]).to(device)
+            buffer_tx = torch.empty([0, received_words.shape[1]]).to(device)
+            buffer_ser = torch.empty([0]).to(device)
+        else:
+            # draw words from different channels
+            buffer_tx, buffer_rx = self.channel_dataset['train'].__getitem__(snr_list=[snr], gamma=gamma)
+            buffer_ser = torch.zeros(buffer_rx.shape[0]).to(device)
+            buffer_tx = torch.cat([
+                torch.Tensor(encode(transmitted_word.int().cpu().numpy(), self.n_symbols).reshape(1, -1)).to(device) for
+                transmitted_word in buffer_tx], dim=0)
+
         support_idx = torch.arange(-self.window_size - 1, -1).long().to(device)
         query_idx = -1 * torch.ones(1).long().to(device)
-
-        # draw words from different channels
-        buffer_tx, buffer_rx = self.channel_dataset['train'].__getitem__(snr_list=[snr],
-                                                                         gamma=gamma)
-        buffer_ser = torch.zeros(buffer_rx.shape[0]).to(device)
-        buffer_tx = torch.cat([
-            torch.Tensor(encode(transmitted_word.int().cpu().numpy(), self.n_symbols).reshape(1, -1)).to(device) for
-            transmitted_word in buffer_tx], dim=0)
 
         for count, (transmitted_word, received_word) in enumerate(zip(transmitted_words, received_words)):
             transmitted_word, received_word = transmitted_word.reshape(1, -1), received_word.reshape(1, -1)
@@ -331,16 +334,16 @@ class Trainer(object):
                 print('meta-training')
                 self.meta_weights_init()
                 # self.meta_train()
-                META_TRAINING_ITER = 10
                 for i in range(META_TRAINING_ITER):
-                    j_hat_values = torch.unique(
-                        torch.randint(low=self.subframes_in_frame, high=buffer_rx.shape[0], size=[META_J_NUM])).to(
+                    j_hat_values = torch.unique(torch.randint(low=0, high=buffer_rx.shape[0], size=[META_J_NUM])).to(
                         device)
                     loss = 0
                     for j_hat in j_hat_values:
-                        cur_support_idx = j_hat + support_idx + 1
+                        skip_num = torch.randint(low=0, high=2, size=[1]).to(device)
+                        cur_support_idx = j_hat + support_idx + skip_num
                         cur_query_idx = j_hat + query_idx + 1
                         loss += self.meta_train_loop(buffer_rx, buffer_tx, cur_support_idx, cur_query_idx)
+
                 copy_model(source_model=self.detector, dest_model=self.saved_detector)
 
             if self.self_supervised and ser <= self.ser_thresh:
@@ -425,7 +428,7 @@ class Trainer(object):
                         print(f'Minibatch {minibatch}, ser - {ser}')
                         # save best weights
                         if ser < best_ser:
-                            # self.save_weights(float(loss_query), snr, gamma)
+                            self.save_weights(float(loss_query), snr, gamma)
                             best_ser = ser
 
     def meta_train_loop(self, received_words: torch.Tensor, transmitted_words: torch.Tensor,

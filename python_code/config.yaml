@@ -1,9 +1,9 @@
 # general
-run_name: 'meta_training_200_5_channel1'
+run_name: 'meta_training_200_2_channel1'
 
 # coding parameters
 use_ecc: True # True, False
-n_symbols: 5
+n_symbols: 2
 
 # channel
 memory_length: 4
@@ -12,7 +12,7 @@ channel_coefficients: 'time_decay' # 'time_decay','cost2100'
 noisy_est_var: 0 # 0, 0.1 for ISI_AWGN, 0.08 for Poisson
 fading_in_channel: True # True, False
 fading_in_decoder: False # True, False
-fading_taps_type: 1 # 1 or 2
+fading_taps_type: 2 # 1 or 2
 subframes_in_frame: 5
 
 # gamma values
@@ -26,7 +26,7 @@ val_frames: 40
 val_SNR_start: 12
 val_SNR_end: 12
 val_SNR_step: 2
-eval_mode: 'aggregated' # 'aggregated','by_word'
+eval_mode: 'by_word' # 'aggregated','by_word'
 
 # train hyperparameters
 train_block_length: 200
@@ -46,11 +46,11 @@ noise_seed: 3450002
 word_seed: 7860002
 
 # self-supervised online training
-self_supervised: False # True, False
+self_supervised: True # True, False
 self_supervised_iterations: 200
 ser_thresh: 0.02
 meta_lr: 0.1
 MAML: True # False, True
-online_meta: False # False, True
+online_meta: True # False, True
 weights_init: 'last_frame' # 'random','last_frame','meta_training'
 window_size: 1
