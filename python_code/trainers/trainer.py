@@ -21,6 +21,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 ONLINE_META_FRAMES = 1
 META_J_NUM = 10
 META_TRAINING_ITER = 10
+BUFFER_EMPTY = False
 
 
 class Trainer(object):
@@ -197,6 +198,7 @@ class Trainer(object):
         self.gamma_range = np.linspace(self.gamma_start, self.gamma_end, self.gamma_num)
         self.frames_per_phase = {'train': self.train_frames, 'val': self.val_frames}
         self.block_lengths = {'train': self.train_block_length, 'val': self.val_block_length}
+        self.channel_coefficients = {'train': 'time_decay', 'val': self.channel_coefficients}
         self.transmission_lengths = {
             'train': self.train_block_length if not self.use_ecc else self.train_block_length + 8 * self.n_symbols,
             'val': self.val_block_length if not self.use_ecc else self.val_block_length + 8 * self.n_symbols}
@@ -206,7 +208,7 @@ class Trainer(object):
                                        transmission_length=self.transmission_lengths[phase],
                                        words=self.frames_per_phase[phase] * self.subframes_in_frame,
                                        memory_length=self.memory_length,
-                                       channel_coefficients=self.channel_coefficients,
+                                       channel_coefficients=self.channel_coefficients[phase],
                                        random=self.rand_gen,
                                        word_rand_gen=self.word_rand_gen,
                                        noisy_est_var=self.noisy_est_var,
@@ -280,7 +282,6 @@ class Trainer(object):
         # saved detector is used to initialize the decoder in meta learning loops
         self.saved_detector = copy.deepcopy(self.detector)
         # query for all detected words
-        BUFFER_EMPTY = False
         if BUFFER_EMPTY:
             buffer_rx = torch.empty([0, received_words.shape[1]]).to(device)
             buffer_tx = torch.empty([0, received_words.shape[1]]).to(device)
@@ -328,6 +329,10 @@ class Trainer(object):
                 buffer_tx = torch.cat([buffer_tx,
                                        detected_word.reshape(1, -1) if ser > 0 else encoded_word.reshape(1, -1)], dim=0)
                 buffer_ser = torch.cat([buffer_ser, torch.FloatTensor([ser]).to(device)])
+                if not BUFFER_EMPTY:
+                    buffer_rx = buffer_rx[1:]
+                    buffer_tx = buffer_tx[1:]
+                    buffer_ser = buffer_ser[1:]
 
             if self.online_meta and count % (
                     ONLINE_META_FRAMES * self.subframes_in_frame) == 0 and count >= self.subframes_in_frame:
@@ -337,13 +342,11 @@ class Trainer(object):
                 for i in range(META_TRAINING_ITER):
                     j_hat_values = torch.unique(torch.randint(low=0, high=buffer_rx.shape[0], size=[META_J_NUM])).to(
                         device)
-                    loss = 0
                     for j_hat in j_hat_values:
                         skip_num = torch.randint(low=0, high=2, size=[1]).to(device)
                         cur_support_idx = j_hat + support_idx + skip_num
                         cur_query_idx = j_hat + query_idx + 1
-                        loss += self.meta_train_loop(buffer_rx, buffer_tx, cur_support_idx, cur_query_idx)
-
+                        self.meta_train_loop(buffer_rx, buffer_tx, cur_support_idx, cur_query_idx)
                 copy_model(source_model=self.detector, dest_model=self.saved_detector)
 
             if self.self_supervised and ser <= self.ser_thresh:
@@ -427,9 +430,7 @@ class Trainer(object):
                         ser = self.single_eval_at_point(snr, gamma)
                         print(f'Minibatch {minibatch}, ser - {ser}')
                         # save best weights
-                        if ser < best_ser:
-                            self.save_weights(float(loss_query), snr, gamma)
-                            best_ser = ser
+                        self.save_weights(float(loss_query), snr, gamma)
 
     def meta_train_loop(self, received_words: torch.Tensor, transmitted_words: torch.Tensor,
                         support_idx: torch.Tensor, query_idx: torch.Tensor):

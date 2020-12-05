@@ -97,11 +97,6 @@ class ChannelModelDataset(Dataset):
             s = OnOffModulator.modulate(c)
             # transmit through noisy channel
             y = PoissonChannel.transmit(s=s, random=self.random, h=h, snr=snr, memory_length=self.memory_length)
-        elif self.channel_type == 'COST2100':
-            # modulation
-            s = BPSKModulator.modulate(c)
-            # transmit through noisy channel
-            y = COST2100Channel.transmit(s=s, random=self.random, h=h, snr=snr, memory_length=self.memory_length)
         else:
             raise Exception('No such channel defined!!!')
         return y

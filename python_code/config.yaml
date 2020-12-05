@@ -22,7 +22,7 @@ gamma_num: 1
 
 # validation hyperparameters
 val_block_length: 200
-val_frames: 40
+val_frames: 50
 val_SNR_start: 12
 val_SNR_end: 12
 val_SNR_step: 2
@@ -30,7 +30,7 @@ eval_mode: 'by_word' # 'aggregated','by_word'
 
 # train hyperparameters
 train_block_length: 200
-train_frames: 50
+train_frames: 10
 train_minibatch_num: 10
 train_minibatch_size: 128
 train_SNR_start: 12
