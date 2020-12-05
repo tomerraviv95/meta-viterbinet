@@ -19,7 +19,7 @@ from python_code.utils.python_utils import copy_model
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 ONLINE_META_FRAMES = 1
-META_J_NUM = 10
+META_J_NUM = 20
 META_TRAINING_ITER = 10
 BUFFER_EMPTY = False
 
@@ -338,12 +338,11 @@ class Trainer(object):
                     ONLINE_META_FRAMES * self.subframes_in_frame) == 0 and count >= self.subframes_in_frame:
                 print('meta-training')
                 self.meta_weights_init()
-                # self.meta_train()
                 for i in range(META_TRAINING_ITER):
                     j_hat_values = torch.unique(torch.randint(low=0, high=buffer_rx.shape[0], size=[META_J_NUM])).to(
                         device)
                     for j_hat in j_hat_values:
-                        skip_num = torch.randint(low=0, high=2, size=[1]).to(device)
+                        skip_num = 1  # torch.randint(low=0, high=2, size=[1]).to(device)
                         cur_support_idx = j_hat + support_idx + skip_num
                         cur_query_idx = j_hat + query_idx + 1
                         self.meta_train_loop(buffer_rx, buffer_tx, cur_support_idx, cur_query_idx)
@@ -506,6 +505,7 @@ class Trainer(object):
         # if loss is Nan inform the user
         if torch.sum(torch.isnan(loss)):
             print('Nan value')
+            return np.nan
         current_loss = loss.item()
         # back propagation
         for param in self.detector.parameters():

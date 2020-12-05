@@ -19,7 +19,7 @@ elif channel_coefficients == 'time_decay':
     for index in range(250):
         h = np.reshape(np.exp(-gamma * np.arange(memory_length)), [1, memory_length])
         fading_taps = 5 * np.array([51, 39, 33, 21])
-        fading_taps = np.maximum(fading_taps - index, -np.ones(4))
+        fading_taps = np.maximum(fading_taps - index, -np.ones(4)) - 1e-5
         h *= (0.8 + 0.2 * np.cos(np.pi * index / fading_taps)).reshape(1, memory_length)
         total_h[index] = h
 else:
