@@ -5,6 +5,7 @@ from python_code.ecc.rs_main import decode, encode
 from python_code.utils.metrics import calculate_error_rates
 from dir_definitions import CONFIG_PATH, WEIGHTS_DIR
 from torch.nn import CrossEntropyLoss, BCELoss, MSELoss
+from python_code.utils.python_utils import copy_model
 from torch.optim import RMSprop, Adam, SGD
 from shutil import copyfile
 import yaml
@@ -15,13 +16,7 @@ import numpy as np
 import math
 import copy
 
-from python_code.utils.python_utils import copy_model
-
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-ONLINE_META_FRAMES = 1
-META_J_NUM = 20
-META_TRAINING_ITER = 10
-BUFFER_EMPTY = False
 
 
 class Trainer(object):
@@ -79,6 +74,9 @@ class Trainer(object):
         self.online_meta = None
         self.weights_init = None
         self.window_size = None
+        self.buffer_empty = None
+        self.meta_train_iterations = None
+        self.meta_j_num = None
 
         # seed
         self.noise_seed = None
@@ -282,7 +280,7 @@ class Trainer(object):
         # saved detector is used to initialize the decoder in meta learning loops
         self.saved_detector = copy.deepcopy(self.detector)
         # query for all detected words
-        if BUFFER_EMPTY:
+        if self.buffer_empty:
             buffer_rx = torch.empty([0, received_words.shape[1]]).to(device)
             buffer_tx = torch.empty([0, received_words.shape[1]]).to(device)
             buffer_ser = torch.empty([0]).to(device)
@@ -329,20 +327,20 @@ class Trainer(object):
                 buffer_tx = torch.cat([buffer_tx,
                                        detected_word.reshape(1, -1) if ser > 0 else encoded_word.reshape(1, -1)], dim=0)
                 buffer_ser = torch.cat([buffer_ser, torch.FloatTensor([ser]).to(device)])
-                if not BUFFER_EMPTY:
+                if not self.buffer_empty:
                     buffer_rx = buffer_rx[1:]
                     buffer_tx = buffer_tx[1:]
                     buffer_ser = buffer_ser[1:]
 
-            if self.online_meta and count % (
-                    ONLINE_META_FRAMES * self.subframes_in_frame) == 0 and count >= self.subframes_in_frame:
+            if self.online_meta and count % self.subframes_in_frame == 0 and count >= self.subframes_in_frame:
                 print('meta-training')
                 self.meta_weights_init()
-                for i in range(META_TRAINING_ITER):
-                    j_hat_values = torch.unique(torch.randint(low=0, high=buffer_rx.shape[0], size=[META_J_NUM])).to(
+                for i in range(self.meta_train_iterations):
+                    j_hat_values = torch.unique(
+                        torch.randint(low=0, high=buffer_rx.shape[0] - 2, size=[self.meta_j_num])).to(
                         device)
                     for j_hat in j_hat_values:
-                        skip_num = 1  # torch.randint(low=0, high=2, size=[1]).to(device)
+                        skip_num = 1  # torch.randint(low=0, high=3, size=[1]).to(device)
                         cur_support_idx = j_hat + support_idx + skip_num
                         cur_query_idx = j_hat + query_idx + 1
                         self.meta_train_loop(buffer_rx, buffer_tx, cur_support_idx, cur_query_idx)
@@ -411,7 +409,7 @@ class Trainer(object):
                     query_idx = -1 * torch.ones(1).long().to(device)
                     j_hat_values = torch.unique(torch.randint(low=self.window_size,
                                                               high=transmitted_words.shape[0],
-                                                              size=[META_J_NUM])).to(device)
+                                                              size=[self.meta_j_num])).to(device)
                     if self.use_ecc:
                         transmitted_words = torch.cat([torch.Tensor(
                             encode(transmitted_word.int().cpu().numpy(), self.n_symbols).reshape(1, -1)).to(device)

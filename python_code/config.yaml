@@ -1,5 +1,5 @@
 # general
-run_name: 'training_200_2_channel1'
+run_name: 'meta_training_200_2_channel1'
 
 # coding parameters
 use_ecc: True # True, False
@@ -12,7 +12,7 @@ channel_coefficients: 'time_decay' # 'time_decay','cost2100'
 noisy_est_var: 0 # 0, 0.1 for ISI_AWGN, 0.08 for Poisson
 fading_in_channel: True # True, False
 fading_in_decoder: False # True, False
-fading_taps_type: 1 # 1 or 2
+fading_taps_type: 3 # 1,2 or 3
 subframes_in_frame: 5
 
 # gamma values
@@ -22,19 +22,19 @@ gamma_num: 1
 
 # validation hyperparameters
 val_block_length: 200
-val_frames: 50
-val_SNR_start: 12
-val_SNR_end: 12
+val_frames: 30
+val_SNR_start: 14
+val_SNR_end: 14
 val_SNR_step: 2
 eval_mode: 'by_word' # 'aggregated','by_word'
 
 # train hyperparameters
 train_block_length: 200
 train_frames: 40
-train_minibatch_num: 10
+train_minibatch_num: 25
 train_minibatch_size: 128
-train_SNR_start: 12
-train_SNR_end: 12
+train_SNR_start: 14
+train_SNR_end: 14
 train_SNR_step: 2
 lr: 0.001 # learning rate
 loss_type: 'CrossEntropy' # 'BCE','CrossEntropy','MSE'
@@ -46,11 +46,16 @@ noise_seed: 3450002
 word_seed: 7860002
 
 # self-supervised online training
-self_supervised: False # True, False
+self_supervised: True # True, False
 self_supervised_iterations: 200
 ser_thresh: 0.02
+
+# meta-learning
+online_meta: False # False, True
 meta_lr: 0.1
 MAML: True # False, True
-online_meta: False # False, True
 weights_init: 'last_frame' # 'random','last_frame','meta_training'
 window_size: 1
+buffer_empty: True
+meta_train_iterations: 20
+meta_j_num: 10
