@@ -220,7 +220,7 @@ class Trainer(object):
         self.dataloaders = {phase: torch.utils.data.DataLoader(self.channel_dataset[phase])
                             for phase in ['train', 'val']}
 
-    def online_training(self, buffer_tx, buffer_received):
+    def online_training(self, tx: torch.Tensor, rx: torch.Tensor):
         pass
 
     def single_eval_at_point(self, snr: float, gamma: float) -> float:
@@ -400,7 +400,7 @@ class Trainer(object):
                 # initialize weights and loss
                 self.initialize_detector()
                 self.deep_learning_setup()
-                best_ser = math.inf
+
                 for minibatch in range(1, self.train_minibatch_num + 1):
                     # draw words from different channels
                     transmitted_words, received_words = self.channel_dataset['train'].__getitem__(snr_list=[snr],

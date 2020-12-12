@@ -47,19 +47,18 @@ class VNETTrainer(Trainer):
         loss = self.criterion(input=input_batch, target=gt_states_batch)
         return loss
 
-    def online_training(self, buffer_tx, buffer_rx):
+    def online_training(self, tx: torch.Tensor, rx: torch.Tensor):
         """
         Online training module - train on the detected/re-encoded word only if the ser is below some threshold.
         Start from the saved meta-trained weights.
-        :param buffer_tx:
-        :param buffer_rx:
-        :return:
+        :param tx: transmitted word
+        :param rx: received word
         """
         # run training loops
         for i in range(self.self_supervised_iterations):
             # calculate soft values
-            soft_estimation = self.detector(buffer_rx, 'train')
-            self.run_train_loop(soft_estimation=soft_estimation, transmitted_words=buffer_tx)
+            soft_estimation = self.detector(rx, 'train')
+            self.run_train_loop(soft_estimation=soft_estimation, transmitted_words=tx)
 
 
 if __name__ == '__main__':
