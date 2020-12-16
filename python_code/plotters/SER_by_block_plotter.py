@@ -172,21 +172,21 @@ def add_viterbi(all_curves, val_block_length, n_symbol):
 
 
 def add_viterbinet(all_curves, val_block_length, n_symbol):
-    dec = VNETTrainer(val_SNR_start=12,
-                      val_SNR_end=12,
+    dec = VNETTrainer(val_SNR_start=10,
+                      val_SNR_end=10,
                       val_SNR_step=2,
                       val_block_length=val_block_length,
                       noisy_est_var=0,
-                      fading_in_channel=True,
+                      fading_in_channel=False,
                       fading_in_decoder=False,
                       use_ecc=True,
                       gamma_start=0.2,
                       gamma_end=0.2,
                       gamma_num=1,
                       channel_type='ISI_AWGN',
-                      channel_coefficients='time_decay',
-                      subframes_in_frame=5,
-                      val_frames=50,
+                      channel_coefficients='cost2100',
+                      subframes_in_frame=25,
+                      val_frames=12,
                       eval_mode='by_word',
                       n_symbols=n_symbol,
                       fading_taps_type=2,
@@ -284,21 +284,21 @@ def add_joint_metarnn(all_curves, val_block_length, n_symbol):
 
 
 def add_offlinemetaviterbinet(all_curves, val_block_length, n_symbol):
-    dec = METAVNETTrainer(val_SNR_start=12,
-                          val_SNR_end=12,
+    dec = METAVNETTrainer(val_SNR_start=10,
+                          val_SNR_end=10,
                           val_SNR_step=2,
                           val_block_length=val_block_length,
                           noisy_est_var=0,
-                          fading_in_channel=True,
+                          fading_in_channel=False,
                           fading_in_decoder=False,
                           use_ecc=True,
                           gamma_start=0.2,
                           gamma_end=0.2,
                           gamma_num=1,
                           channel_type='ISI_AWGN',
-                          channel_coefficients='time_decay',
-                          subframes_in_frame=5,
-                          val_frames=50,
+                          channel_coefficients='cost2100',
+                          subframes_in_frame=25,
+                          val_frames=12,
                           eval_mode='by_word',
                           n_symbols=n_symbol,
                           fading_taps_type=2,
@@ -316,22 +316,21 @@ def add_offlinemetaviterbinet(all_curves, val_block_length, n_symbol):
 
 
 def add_onlinemetaviterbinet(all_curves, val_block_length, n_symbol):
-    dec = METAVNETTrainer(val_SNR_start=12,
-                          val_SNR_end=12,
+    dec = METAVNETTrainer(val_SNR_start=10,
+                          val_SNR_end=10,
                           val_SNR_step=2,
                           val_block_length=val_block_length,
                           noisy_est_var=0,
-                          fading_in_channel=True,
+                          fading_in_channel=False,
                           fading_in_decoder=False,
                           use_ecc=True,
-                          train_frames=40,
                           gamma_start=0.2,
                           gamma_end=0.2,
                           gamma_num=1,
                           channel_type='ISI_AWGN',
-                          channel_coefficients='time_decay',
-                          subframes_in_frame=5,
-                          val_frames=50,
+                          channel_coefficients='cost2100',
+                          subframes_in_frame=25,
+                          val_frames=12,
                           eval_mode='by_word',
                           n_symbols=n_symbol,
                           fading_taps_type=2,
@@ -339,6 +338,7 @@ def add_onlinemetaviterbinet(all_curves, val_block_length, n_symbol):
                           self_supervised=True,
                           ser_thresh=0.02,
                           online_meta=True,
+                          buffer_empty=True,
                           weights_init='last_frame',
                           weights_dir=os.path.join(WEIGHTS_DIR,
                                                    f'meta_training_{val_block_length}_{n_symbol}_channel1'))
@@ -349,7 +349,7 @@ def add_onlinemetaviterbinet(all_curves, val_block_length, n_symbol):
 
 
 if __name__ == '__main__':
-    run_over = False
+    run_over = True
     # val_block_lengths = [40, 80, 120, 160, 200, 240, 280, 320, 360, 400]
     # n_symbols = [1, 2, 3, 4, 5, 6, 7, 8]
     # parameters = [(160, 5), (200, 7)]
@@ -360,14 +360,5 @@ if __name__ == '__main__':
         add_viterbinet(all_curves, val_block_length, n_symbol)
         add_offlinemetaviterbinet(all_curves, val_block_length, n_symbol)
         add_onlinemetaviterbinet(all_curves, val_block_length, n_symbol)
-        # add_rnn_online(all_curves, val_block_length, n_symbol)
-        # add_viterbinet(all_curves, val_block_length, n_symbol)
-        # add_joint_rnn(all_curves, val_block_length, n_symbol)
-        # add_joint_viterbinet(all_curves, val_block_length, n_symbol)
-        # add_metarnn(all_curves, val_block_length, n_symbol)
-        # add_metaviterbinet(all_curves, val_block_length, n_symbol)
-        # add_viterbi(all_curves, val_block_length, n_symbol)
-        # plot_all_curves_aggregated(all_curves, val_block_length, n_symbol)
-        plot_all_curves(all_curves, val_block_length, n_symbol)
-        # add_joint_metaviterbinet(all_curves, val_block_length, n_symbol)
-        # add_joint_metarnn(all_curves, val_block_length, n_symbol)
+        plot_all_curves_aggregated(all_curves, val_block_length, n_symbol)
+        # plot_all_curves(all_curves, val_block_length, n_symbol)

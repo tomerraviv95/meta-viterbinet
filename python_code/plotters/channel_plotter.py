@@ -5,7 +5,7 @@ import scipy.io
 import os
 
 memory_length = 4
-channel_coefficients = 'time_decay'  # 'time_decay','cost2100'
+channel_coefficients = 'cost2100'  # 'time_decay','cost2100'
 if channel_coefficients == 'cost2100':
     total_h = np.empty([300, memory_length])
     for i in range(memory_length):
@@ -26,7 +26,7 @@ elif channel_coefficients == 'time_decay':
 else:
     raise ValueError("No such channel coefficients!!!")
 for i in range(memory_length):
-    plt.plot(total_h[:, memory_length - i - 1], label=f'Tap {memory_length - i}')
+    plt.plot(total_h[:, i], label=f'Tap {i}')
 plt.title('Channel Magnitude versus Block Index')
 plt.xlabel('Block Index')
 plt.ylabel('Magnitude')

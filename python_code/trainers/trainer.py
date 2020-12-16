@@ -16,6 +16,8 @@ import numpy as np
 import math
 import copy
 
+META_SUBFRAMES = 5
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
@@ -332,7 +334,7 @@ class Trainer(object):
                     buffer_tx = buffer_tx[1:]
                     buffer_ser = buffer_ser[1:]
 
-            if self.online_meta and count % self.subframes_in_frame == 0 and count >= self.subframes_in_frame:
+            if self.online_meta and count % META_SUBFRAMES == 0 and count >= META_SUBFRAMES:  # self.subframes_in_frame
                 print('meta-training')
                 self.meta_weights_init()
                 for i in range(self.meta_train_iterations):
