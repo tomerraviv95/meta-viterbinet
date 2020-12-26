@@ -38,7 +38,7 @@ def estimate_channel(memory_length: int, gamma: float, channel_coefficients: str
             h *= (0.8 + 0.2 * np.cos(2 * np.pi * index / fading_taps)).reshape(1, memory_length)
         elif fading_taps_type == 2:
             fading_taps = 5 * np.array([51, 39, 33, 21])
-            fading_taps = np.maximum(fading_taps - 1.5 * index, -np.ones(4)) - 1e-5
+            fading_taps = np.maximum(fading_taps - 1.5 * index, 10 * np.ones(4)) - 1e-5
             h *= (0.8 + 0.2 * np.cos(np.pi * index / fading_taps)).reshape(1, memory_length)
         elif fading_taps_type == 3:
             fading_taps = 5 * np.array([51, 39, 33, 21])

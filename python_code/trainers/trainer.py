@@ -16,8 +16,6 @@ import numpy as np
 import math
 import copy
 
-META_SUBFRAMES = 5
-
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
@@ -79,6 +77,7 @@ class Trainer(object):
         self.buffer_empty = None
         self.meta_train_iterations = None
         self.meta_j_num = None
+        self.meta_subframes = None
 
         # seed
         self.noise_seed = None
@@ -334,7 +333,7 @@ class Trainer(object):
                     buffer_tx = buffer_tx[1:]
                     buffer_ser = buffer_ser[1:]
 
-            if self.online_meta and count % META_SUBFRAMES == 0 and count >= META_SUBFRAMES:  # self.subframes_in_frame
+            if self.online_meta and count % self.meta_subframes == 0 and count >= self.meta_subframes:  # self.subframes_in_frame
                 print('meta-training')
                 self.meta_weights_init()
                 for i in range(self.meta_train_iterations):
@@ -526,7 +525,13 @@ class Trainer(object):
         """
         if os.path.join(self.weights_dir, f'snr_{snr}_gamma_{gamma}.pt'):
             print(f'loading model from snr {snr} and gamma {gamma}')
-            checkpoint = torch.load(os.path.join(self.weights_dir, f'snr_{snr}_gamma_{gamma}.pt'))
+            weights_path = os.path.join(self.weights_dir, f'snr_{snr}_gamma_{gamma}.pt')
+            if not os.path.isfile(weights_path):
+                self.fading_taps_type = 1
+                os.makedirs(self.weights_dir, exist_ok=True)
+                self.train()
+                self.fading_taps_type = 2
+            checkpoint = torch.load(weights_path)
             try:
                 self.detector.load_state_dict(checkpoint['model_state_dict'])
             except Exception:

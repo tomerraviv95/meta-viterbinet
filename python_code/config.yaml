@@ -10,9 +10,9 @@ memory_length: 4
 channel_type: 'ISI_AWGN' # 'ISI_AWGN','Poisson'
 channel_coefficients: 'time_decay' # 'time_decay','cost2100'
 noisy_est_var: 0 # 0, 0.1 for ISI_AWGN, 0.08 for Poisson
-fading_in_channel: True # True, False
+fading_in_channel: False # True, False
 fading_in_decoder: False # True, False
-fading_taps_type: 2 # 1,2 or 3
+fading_taps_type: 1 # 1,2 or 3
 subframes_in_frame: 25
 
 # gamma values
@@ -32,7 +32,7 @@ eval_mode: 'by_word' # 'aggregated','by_word'
 train_block_length: 200
 train_frames: 10
 train_minibatch_num: 25
-train_minibatch_size: 128
+train_minibatch_size: 32
 train_SNR_start: 11
 train_SNR_end: 11
 train_SNR_step: 2
@@ -59,3 +59,4 @@ window_size: 1
 buffer_empty: True
 meta_train_iterations: 20
 meta_j_num: 10
+meta_subframes: 5

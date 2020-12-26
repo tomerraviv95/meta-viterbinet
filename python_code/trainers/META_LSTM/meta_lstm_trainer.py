@@ -62,9 +62,12 @@ class MetaLSTMTrainer(Trainer):
             soft_estimation = self.detector(rx, 'train')
             self.run_train_loop(soft_estimation=soft_estimation, transmitted_words=tx)
 
+    def train(self):
+        self.meta_train()
+
 
 if __name__ == '__main__':
     dec = MetaLSTMTrainer()
-    dec.meta_train()
+    dec.train()
     # dec.evaluate()
     # dec.count_parameters()
