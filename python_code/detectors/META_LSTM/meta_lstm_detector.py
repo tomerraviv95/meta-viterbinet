@@ -67,6 +67,6 @@ class MetaLSTMDetector(nn.Module):
 
         if phase == 'val':
             # Decode the output
-            return torch.argmax(out, dim=2)
+            return torch.argmax(out, dim=2).float()
         else:
             return out

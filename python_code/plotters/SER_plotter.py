@@ -98,7 +98,7 @@ def get_ser_plot(dec: Trainer, run_over: bool, method_name: str):
         os.makedirs(PLOTS_DIR)
     file_name = '_'.join([method_name, str(dec.channel_type)])
     plots_path = os.path.join(PLOTS_DIR, file_name + '.pkl')
-
+    print(plots_path)
     # if plot already exists, and the run_over flag is false - load the saved plot
     if os.path.isfile(plots_path) and not run_over:
         print("Loading plots")

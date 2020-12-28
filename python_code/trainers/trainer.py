@@ -326,14 +326,17 @@ class Trainer(object):
             if ser <= self.ser_thresh:
                 buffer_rx = torch.cat([buffer_rx, received_word])
                 buffer_tx = torch.cat([buffer_tx,
-                                       detected_word.reshape(1, -1) if ser > 0 else encoded_word.reshape(1, -1)], dim=0)
+                                       detected_word.reshape(1, -1) if ser > 0 else
+                                       encoded_word.reshape(1, -1)],
+                                      dim=0)
                 buffer_ser = torch.cat([buffer_ser, torch.FloatTensor([ser]).to(device)])
                 if not self.buffer_empty:
                     buffer_rx = buffer_rx[1:]
                     buffer_tx = buffer_tx[1:]
                     buffer_ser = buffer_ser[1:]
 
-            if self.online_meta and count % self.meta_subframes == 0 and count >= self.meta_subframes:  # self.subframes_in_frame
+            if self.online_meta and count % self.meta_subframes == 0 and count >= self.meta_subframes and \
+                    buffer_rx.shape[0] > 2:  # self.subframes_in_frame
                 print('meta-training')
                 self.meta_weights_init()
                 for i in range(self.meta_train_iterations):

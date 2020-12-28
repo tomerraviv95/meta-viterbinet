@@ -123,10 +123,10 @@ def plot_all_curves_aggregated(all_curves: List[Tuple[np.ndarray, np.ndarray, st
         os.path.join(FIGURES_DIR, folder_name,
                      f'SNR {snr}, Block Length {val_block_length}, Error symbols {n_symbol}.png'),
         bbox_inches='tight')
-    plt.show()
+    # plt.show()
 
 
-def plot_schematic(all_curves):
+def plot_schematic(all_curves, val_block_lengths):
     # path for the saved figure
     current_day_time = datetime.datetime.now()
     folder_name = f'{current_day_time.month}-{current_day_time.day}-{current_day_time.hour}-{current_day_time.minute}'
@@ -134,21 +134,25 @@ def plot_schematic(all_curves):
         os.makedirs(os.path.join(FIGURES_DIR, folder_name))
 
     plt.figure()
-    val_block_lengths = []
-    n_symbols = []
-    colors = []
-    for ser, _, val_block_length, n_symbol in all_curves:
-        c = 'black' if np.sum(ser > 0) < 7 else 'red'
-        val_block_lengths.append(val_block_length)
-        n_symbols.append(n_symbol)
-        colors.append(c)
-    plt.scatter(val_block_lengths, n_symbols, c=colors)
+    names = list(set([all_curves[i][1] for i in range(len(all_curves))]))
+    for method_name in names:
+        mean_sers = []
+        key = method_name.split(' ')[0]
+        for ser, cur_name, val_block_length, n_symbol in all_curves:
+            mean_ser = np.mean(ser)
+            if cur_name != method_name:
+                continue
+            mean_sers.append(mean_ser)
+        plt.plot(val_block_lengths, mean_sers, label=METHOD_NAMES[key],
+                 color=COLORS_DICT[key], marker=MARKERS_DICT[key],
+                 linestyle=LINESTYLES_DICT[key], linewidth=2.2)
+
     plt.xticks(val_block_lengths, val_block_lengths)
-    plt.xlabel('Block Length')
-    plt.ylabel('Num of Symbols')
+    plt.xlabel('SNR[dB]')
+    plt.ylabel('Coded BER')
     plt.grid(which='both', ls='--')
-    plt.legend(loc='lower left', prop={'size': 15})
-    plt.savefig(os.path.join(FIGURES_DIR, folder_name, f'block_length_versus_symbols_num.png'),
+    plt.legend(loc='upper right', prop={'size': 15})
+    plt.savefig(os.path.join(FIGURES_DIR, folder_name, f'coded_ber_versus_block_length.png'),
                 bbox_inches='tight')
     plt.show()
 
@@ -196,7 +200,7 @@ def add_joint_viterbinet(all_curves, val_block_length, n_symbol, snr):
     all_curves.append((ser, method_name, val_block_length, n_symbol))
 
 
-def add_joint_rnn(all_curves, val_block_length, n_symbol):
+def add_joint_rnn(all_curves, val_block_length, n_symbol, snr):
     dec = LSTMTrainer(val_SNR_start=snr,
                       val_SNR_end=snr,
                       train_SNR_start=snr,
@@ -224,7 +228,7 @@ def add_joint_rnn(all_curves, val_block_length, n_symbol):
                                                f'rnn_training_{val_block_length}_{n_symbol}_channel1'))
     method_name = f'JointRNN'
     ser = get_ser_plot(dec, run_over=run_over,
-                       method_name=method_name + f' - Block Length {val_block_length}, Error symbols {n_symbol}')
+                       method_name=method_name + f' - SNR {snr}, Block Length {val_block_length}, Error symbols {n_symbol}')
     all_curves.append((ser, method_name, val_block_length, n_symbol))
 
 
@@ -329,7 +333,7 @@ def add_onlinemetaviterbinet(all_curves, val_block_length, n_symbol, snr):
     all_curves.append((ser, method_name, val_block_length, n_symbol))
 
 
-def add_online_metarnn(all_curves, val_block_length, n_symbol):
+def add_online_metarnn(all_curves, val_block_length, n_symbol, snr):
     dec = MetaLSTMTrainer(val_SNR_start=snr,
                           val_SNR_end=snr,
                           train_SNR_start=snr,
@@ -358,29 +362,38 @@ def add_online_metarnn(all_curves, val_block_length, n_symbol):
                           online_meta=True,
                           buffer_empty=True,
                           weights_init='last_frame',
+                          meta_train_iterations=10,
+                          meta_j_num=5,
                           weights_dir=os.path.join(WEIGHTS_DIR,
                                                    f'rnn_meta_training_{val_block_length}_{n_symbol}_channel1'))
     method_name = f'OnlineRNN'
     ser = get_ser_plot(dec, run_over=run_over,
-                       method_name=method_name + f' - Block Length {val_block_length}, Error symbols {n_symbol}')
+                       method_name=method_name + f' - SNR {snr}, Block Length {val_block_length}, Error symbols {n_symbol}')
     all_curves.append((ser, method_name, val_block_length, n_symbol))
 
 
 VAL_FRAMES = 8
 
 if __name__ == '__main__':
-    run_over = False
-    val_block_lengths = [80, 120, 160, 200]
-    snr_values = [12]
+    run_over = True
+    # val_block_lengths = [80, 120, 160, 200, 240, 280]
+    val_block_lengths = [200]
+    # snr_values = [12]
+    snr_values = [6, 7, 8, 9, 10, 11, 12, 13, 14]
     n_symbols = [2]
+    all_curves = []
     for snr in snr_values:
         for val_block_length in val_block_lengths:
             for n_symbol in n_symbols:
-                all_curves = []
                 print(val_block_length, n_symbol)
-                add_joint_viterbinet(all_curves, val_block_length, n_symbol, snr)
-                add_viterbinet(all_curves, val_block_length, n_symbol, snr)
-                add_onlinemetaviterbinet(all_curves, val_block_length, n_symbol, snr)
+                # add_joint_viterbinet(all_curves, val_block_length, n_symbol, snr)
+                # add_viterbinet(all_curves, val_block_length, n_symbol, snr)
+                # add_onlinemetaviterbinet(all_curves, val_block_length, n_symbol, snr)
+                #
+                # add_joint_rnn(all_curves, val_block_length, n_symbol, snr)
+                # add_rnn(all_curves, val_block_length, n_symbol, snr)
+                add_online_metarnn(all_curves, val_block_length, n_symbol, snr)
 
-                plot_all_curves_aggregated(all_curves, val_block_length, n_symbol, snr)
+                # plot_all_curves_aggregated(all_curves, val_block_length, n_symbol, snr)
                 # plot_all_curves(all_curves, val_block_length, n_symbol)
+    plot_schematic(all_curves, snr_values)
