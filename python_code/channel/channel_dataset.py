@@ -62,7 +62,7 @@ class ChannelModelDataset(Dataset):
         if self.phase == 'val':
             index = 0
         else:
-            index = random.randint(0, 1e6)
+            index = 0  # random.randint(0, 1e6)
         # accumulate words until reaches desired number
         while y_full.shape[0] < self.words:
             # generate word
