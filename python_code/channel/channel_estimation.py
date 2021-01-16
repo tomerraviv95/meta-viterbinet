@@ -51,7 +51,6 @@ if __name__ == '__main__':
     memory_length = 4
     gamma = 0.2
     noisy_est_var = 0
-    index = 0
     channel_coefficients = 'time_decay'  # 'time_decay','cost2100'
     fading_taps_type = 1
     fading = True
