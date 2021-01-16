@@ -80,6 +80,7 @@ def plot_all_curves_aggregated(all_curves: List[Tuple[np.ndarray, np.ndarray, st
     # iterate all curves, plot each one
     for ser, method_name, _, _ in all_curves:
         print(method_name)
+        print(len(ser))
         block_range = np.arange(1, len(ser) + 1)[:n_elements]
         key = method_name.split(' ')[0]
         agg_ser = (np.cumsum(ser) / np.arange(1, len(ser) + 1))[:n_elements]
@@ -103,7 +104,7 @@ def plot_all_curves_aggregated(all_curves: List[Tuple[np.ndarray, np.ndarray, st
     plt.show()
 
 
-def plot_schematic(all_curves, val_block_lengths):
+def plot_schematic(all_curves, snr_values):
     # path for the saved figure
     current_day_time = datetime.datetime.now()
     folder_name = f'{current_day_time.month}-{current_day_time.day}-{current_day_time.hour}-{current_day_time.minute}'
@@ -111,7 +112,11 @@ def plot_schematic(all_curves, val_block_lengths):
         os.makedirs(os.path.join(FIGURES_DIR, folder_name))
 
     plt.figure()
-    names = list(set([all_curves[i][1] for i in range(len(all_curves))]))
+    names = []
+    for i in range(len(all_curves)):
+        if all_curves[i][1] not in names:
+            names.append(all_curves[i][1])
+
     for method_name in names:
         mean_sers = []
         key = method_name.split(' ')[0]
@@ -120,15 +125,16 @@ def plot_schematic(all_curves, val_block_lengths):
             if cur_name != method_name:
                 continue
             mean_sers.append(mean_ser)
-        plt.plot(val_block_lengths, mean_sers, label=METHOD_NAMES[key],
+        plt.plot(snr_values, mean_sers, label=METHOD_NAMES[key],
                  color=COLORS_DICT[key], marker=MARKERS_DICT[key],
                  linestyle=LINESTYLES_DICT[key], linewidth=2.2)
 
-    plt.xticks(val_block_lengths, val_block_lengths)
+    plt.xticks(snr_values, snr_values)
     plt.xlabel('SNR[dB]')
     plt.ylabel('Coded BER')
     plt.grid(which='both', ls='--')
     plt.legend(loc='upper right', prop={'size': 15})
+    plt.yscale('log')
     plt.savefig(os.path.join(FIGURES_DIR, folder_name, f'coded_ber_versus_block_length.png'),
                 bbox_inches='tight')
     plt.show()

@@ -1,5 +1,5 @@
 from dir_definitions import WEIGHTS_DIR
-from python_code.plotters.plotter_utils import get_ser_plot, plot_all_curves_aggregated
+from python_code.plotters.plotter_utils import get_ser_plot, plot_all_curves_aggregated, plot_schematic
 from python_code.trainers.META_LSTM.meta_lstm_trainer import MetaLSTMTrainer
 from python_code.trainers.META_VNET.metavnet_trainer import METAVNETTrainer
 from python_code.trainers.LSTM.lstm_trainer import LSTMTrainer
@@ -9,80 +9,87 @@ from python_code.plotters.plotter_config import *
 import os
 
 
-def add_viterbi(all_curves,current_params):
+def add_viterbi(all_curves, current_params):
     dec = VATrainer(self_supervised=False,
                     online_meta=False,
                     weights_dir=os.path.join(WEIGHTS_DIR,
-                                             f'training_{HYPERPARAMS_DICT["val_block_length"]}_{HYPERPARAMS_DICT["n_symbol"]}_channel1'),
+                                             f'training_{HYPERPARAMS_DICT["val_block_length"]}_{HYPERPARAMS_DICT["n_symbols"]}_channel1'),
                     **HYPERPARAMS_DICT)
     method_name = f'Viterbi - Full CSI'
-    ser = get_ser_plot(dec, run_over=run_over, method_name=method_name + current_params)
-    all_curves.append((ser, method_name, HYPERPARAMS_DICT['val_block_length'], HYPERPARAMS_DICT['n_symbol']))
+    print(method_name)
+    ser = get_ser_plot(dec, run_over=run_over, method_name=method_name + '_' + current_params)
+    all_curves.append((ser, method_name, HYPERPARAMS_DICT['val_block_length'], HYPERPARAMS_DICT['n_symbols']))
 
 
-def add_joint_viterbinet(all_curves,current_params):
+def add_joint_viterbinet(all_curves, current_params):
     dec = VNETTrainer(self_supervised=False,
                       online_meta=False,
                       weights_dir=os.path.join(WEIGHTS_DIR,
                                                f'training_{HYPERPARAMS_DICT["val_block_length"]}_{HYPERPARAMS_DICT["n_symbols"]}_channel1'),
                       **HYPERPARAMS_DICT)
     method_name = f'Joint ViterbiNet'
-    ser = get_ser_plot(dec, run_over=run_over, method_name=method_name + current_params)
+    print(method_name)
+    ser = get_ser_plot(dec, run_over=run_over, method_name=method_name + '_' + current_params)
     all_curves.append((ser, method_name, HYPERPARAMS_DICT['val_block_length'], HYPERPARAMS_DICT['n_symbols']))
 
 
-def add_joint_rnn(all_curves,current_params):
+def add_joint_rnn(all_curves, current_params):
     dec = LSTMTrainer(self_supervised=False,
                       online_meta=False,
                       weights_dir=os.path.join(WEIGHTS_DIR,
                                                f'rnn_training_{HYPERPARAMS_DICT["val_block_length"]}_{HYPERPARAMS_DICT["n_symbols"]}_channel1'),
                       **HYPERPARAMS_DICT)
     method_name = f'JointRNN'
-    ser = get_ser_plot(dec, run_over=run_over, method_name=method_name + current_params)
+    print(method_name)
+    ser = get_ser_plot(dec, run_over=run_over, method_name=method_name + '_' + current_params)
     all_curves.append((ser, method_name, HYPERPARAMS_DICT['val_block_length'], HYPERPARAMS_DICT['n_symbols']))
 
 
-def add_viterbinet(all_curves,current_params):
+def add_viterbinet(all_curves, current_params):
     dec = VNETTrainer(self_supervised=True,
                       online_meta=False,
                       weights_dir=os.path.join(WEIGHTS_DIR,
                                                f'training_{HYPERPARAMS_DICT["val_block_length"]}_{HYPERPARAMS_DICT["n_symbols"]}_channel1'),
                       **HYPERPARAMS_DICT)
     method_name = f'ViterbiNet'
-    ser = get_ser_plot(dec, run_over=run_over, method_name=method_name + current_params)
+    print(method_name)
+    ser = get_ser_plot(dec, run_over=run_over, method_name=method_name + '_' + current_params)
     all_curves.append((ser, method_name, HYPERPARAMS_DICT['val_block_length'], HYPERPARAMS_DICT['n_symbols']))
 
 
-def add_rnn(all_curves,current_params):
+def add_rnn(all_curves, current_params):
     dec = LSTMTrainer(self_supervised=True,
                       online_meta=False,
                       weights_dir=os.path.join(WEIGHTS_DIR,
                                                f'rnn_training_{HYPERPARAMS_DICT["val_block_length"]}_{HYPERPARAMS_DICT["n_symbols"]}_channel1'),
                       **HYPERPARAMS_DICT)
     method_name = f'LSTM'
-    ser = get_ser_plot(dec, run_over=run_over, method_name=method_name + current_params)
+    print(method_name)
+    ser = get_ser_plot(dec, run_over=run_over, method_name=method_name + '_' + current_params)
     all_curves.append((ser, method_name, HYPERPARAMS_DICT['val_block_length'], HYPERPARAMS_DICT['n_symbols']))
 
 
-def add_onlinemetaviterbinet(all_curves,current_params):
+def add_onlinemetaviterbinet(all_curves, current_params):
     dec = METAVNETTrainer(self_supervised=True,
                           online_meta=True,
                           weights_dir=os.path.join(WEIGHTS_DIR,
                                                    f'meta_training_{HYPERPARAMS_DICT["val_block_length"]}_{HYPERPARAMS_DICT["n_symbols"]}_channel1'),
                           **HYPERPARAMS_DICT)
     method_name = f'OnlineMetaViterbiNet'
-    ser = get_ser_plot(dec, run_over=run_over, method_name=method_name + current_params)
+    print(method_name)
+    ser = get_ser_plot(dec, run_over=run_over, method_name=method_name + '_' + current_params)
     all_curves.append((ser, method_name, HYPERPARAMS_DICT['val_block_length'], HYPERPARAMS_DICT['n_symbols']))
 
 
-def add_online_metarnn(all_curves,current_params):
+def add_online_metarnn(all_curves, current_params):
     dec = MetaLSTMTrainer(self_supervised=True,
                           online_meta=True,
                           weights_dir=os.path.join(WEIGHTS_DIR,
                                                    f'rnn_meta_training_{HYPERPARAMS_DICT["val_block_length"]}_{HYPERPARAMS_DICT["n_symbols"]}_channel1'),
                           **HYPERPARAMS_DICT)
     method_name = f'OnlineRNN'
-    ser = get_ser_plot(dec, run_over=run_over, method_name=method_name + current_params)
+    print(method_name)
+    ser = get_ser_plot(dec, run_over=run_over, method_name=method_name + '_' + current_params)
     all_curves.append((ser, method_name, HYPERPARAMS_DICT['val_block_length'], HYPERPARAMS_DICT['n_symbols']))
 
 
@@ -107,12 +114,19 @@ HYPERPARAMS_DICT = {'val_SNR_step': 2,
 
 if __name__ == '__main__':
     run_over = False
-    parameters = [(12, 120)]  # ,(8, 120)
+    parameters = [(6, 120),
+                  (7, 120),
+                  (8, 120),
+                  (9, 120),
+                  (10, 120),
+                  (11, 120),
+                  (12, 120)]
+
     n_symbol = 2
-    channel_coefficients = 'time_decay'  # 'time_decay','cost2100'
+    channel_coefficients = 'cost2100'  # 'time_decay','cost2100'
+    all_curves = []
 
     for snr, val_block_length in parameters:
-        all_curves = []
         print(snr, val_block_length, n_symbol)
 
         HYPERPARAMS_DICT['n_symbols'] = n_symbol
@@ -128,13 +142,15 @@ if __name__ == '__main__':
         current_params = HYPERPARAMS_DICT['channel_coefficients'] + '_' + str(HYPERPARAMS_DICT['val_SNR_start']) + '_' + \
                          str(HYPERPARAMS_DICT['val_block_length']) + '_' + str(HYPERPARAMS_DICT['n_symbols'])
 
-        add_joint_viterbinet(all_curves,current_params)
-        # add_joint_rnn(all_curves,current_params)
-        add_viterbinet(all_curves,current_params)
-        # add_rnn(all_curves,current_params)
-        add_onlinemetaviterbinet(all_curves,current_params)
+        add_joint_viterbinet(all_curves, current_params)
+        add_joint_rnn(all_curves,current_params)
+        add_viterbinet(all_curves, current_params)
+        add_rnn(all_curves,current_params)
+        add_onlinemetaviterbinet(all_curves, current_params)
         # add_online_metarnn(all_curves,current_params)
-        # add_viterbi(all_curves,current_params)
+        add_viterbi(all_curves, current_params)
 
-        plot_all_curves_aggregated(all_curves, val_block_length, n_symbol, snr)
-    # plot_schematic(all_curves, snr_values)
+        # plot_all_curves_aggregated(all_curves, val_block_length, n_symbol, snr)
+
+    snr_values = [x[0] for x in parameters]
+    plot_schematic(all_curves, snr_values)
