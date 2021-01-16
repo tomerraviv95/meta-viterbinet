@@ -1,158 +1,16 @@
-from dir_definitions import FIGURES_DIR, WEIGHTS_DIR
-from python_code.plotters.plotting_config import *
-from typing import List, Tuple
-import matplotlib.pyplot as plt
-import numpy as np
-import datetime
-import math
+from dir_definitions import WEIGHTS_DIR
 import os
-from python_code.plotters.SER_plotter import get_ser_plot
+from python_code.plotters.plotter_utils import get_ser_plot, plot_all_curves_aggregated
 from python_code.trainers.META_LSTM.meta_lstm_trainer import MetaLSTMTrainer
 from python_code.trainers.META_VNET.metavnet_trainer import METAVNETTrainer
 from python_code.trainers.LSTM.lstm_trainer import LSTMTrainer
 from python_code.trainers.VA.va_trainer import VATrainer
 from python_code.trainers.VNET.vnet_trainer import VNETTrainer
-
-COLORS_DICT = {'ViterbiNet': 'green',
-               'LSTM': 'yellow',
-               'Joint': 'orange',
-               'JointRNN': 'red',
-               'Viterbi': 'black',
-               'MetaRNN': 'r',
-               'OnlineRNN': 'black',
-               'OfflineMetaViterbiNet': 'black',
-               'OnlineMetaViterbiNet': 'blue'}
-
-MARKERS_DICT = {'ViterbiNet': 'd',
-                'LSTM': 'd',
-                'Joint': 'x',
-                'JointRNN': 'x',
-                'Viterbi': 'o',
-                'MetaRNN': '.',
-                'OnlineRNN': 'x',
-                'OfflineMetaViterbiNet': 'x',
-                'OnlineMetaViterbiNet': '.'}
-
-LINESTYLES_DICT = {'ViterbiNet': 'solid',
-                   'LSTM': 'dotted',
-                   'Joint': 'solid',
-                   'JointRNN': 'dotted',
-                   'Viterbi': 'solid',
-                   'MetaRNN': 'dotted',
-                   'OnlineRNN': 'solid',
-                   'OfflineMetaViterbiNet': 'solid',
-                   'OnlineMetaViterbiNet': 'dotted'}
-
-METHOD_NAMES = {'ViterbiNet': 'ViterbiNet, online training',
-                'LSTM': 'LSTM, online training',
-                'Joint': 'ViterbiNet, joint training',
-                'JointRNN': 'LSTM, joint training',
-                'Viterbi': 'Viterbi, full CSI',
-                'MetaRNN': 'Meta LSTM',
-                'OnlineRNN': 'Online Meta LSTM',
-                'OfflineMetaViterbiNet': 'Offline Meta ViterbiNet',
-                'OnlineMetaViterbiNet': 'Online Meta ViterbiNet'}
+from python_code.plotters.plotter_config import *
 
 
-def plot_all_curves(all_curves: List[Tuple[np.ndarray, np.ndarray, str]], val_block_length, n_symbol):
-    # path for the saved figure
-    current_day_time = datetime.datetime.now()
-    folder_name = f'{current_day_time.month}-{current_day_time.day}-{current_day_time.hour}-{current_day_time.minute}'
-    if not os.path.isdir(os.path.join(FIGURES_DIR, folder_name)):
-        os.makedirs(os.path.join(FIGURES_DIR, folder_name))
 
-    plt.figure()
-    min_block_ind = math.inf
-    max_block_ind = -math.inf
-    # iterate all curves, plot each one
-    for ser, method_name, _, _ in all_curves:
-        print(method_name)
-        block_range = np.arange(1, len(ser) + 1)
-        key = method_name.split(' ')[0]
-        plt.plot(block_range, ser, label=METHOD_NAMES[key], color=COLORS_DICT[key], marker=MARKERS_DICT[key],
-                 linestyle=LINESTYLES_DICT[key], linewidth=2.2)
-        min_block_ind = block_range[0] if block_range[0] < min_block_ind else min_block_ind
-        max_block_ind = block_range[-1] if block_range[-1] > max_block_ind else max_block_ind
-
-    plt.ylabel('Coded BER')
-    plt.xlabel('Block Index')
-    # plt.grid(which='both', ls='-')
-    plt.xlim([min_block_ind - 0.1, max_block_ind + 0.1])
-    # plt.ylim([0,0.08])
-    plt.legend(loc='upper left')
-    plt.savefig(
-        os.path.join(FIGURES_DIR, folder_name,
-                     f'Single - SNR {snr}, Block Length {val_block_length}, Error symbols {n_symbol}.png'),
-        bbox_inches='tight')
-    plt.show()
-
-
-def plot_all_curves_aggregated(all_curves: List[Tuple[np.ndarray, np.ndarray, str]], val_block_length, n_symbol, snr):
-    # path for the saved figure
-    current_day_time = datetime.datetime.now()
-    folder_name = f'{current_day_time.month}-{current_day_time.day}-{current_day_time.hour}-{current_day_time.minute}'
-    if not os.path.isdir(os.path.join(FIGURES_DIR, folder_name)):
-        os.makedirs(os.path.join(FIGURES_DIR, folder_name))
-
-    plt.figure()
-    min_block_ind = math.inf
-    max_block_ind = -math.inf
-    n_elements = 300
-    # iterate all curves, plot each one
-    for ser, method_name, _, _ in all_curves:
-        print(method_name)
-        block_range = np.arange(1, len(ser) + 1)[:n_elements]
-        key = method_name.split(' ')[0]
-        plt.plot(block_range, (np.cumsum(ser) / np.arange(1, len(ser) + 1))[:n_elements],
-                 label=METHOD_NAMES[key] + f', {snr}dB SNR',
-                 color=COLORS_DICT[key], marker=MARKERS_DICT[key],
-                 linestyle=LINESTYLES_DICT[key], linewidth=2.2)
-        min_block_ind = block_range[0] if block_range[0] < min_block_ind else min_block_ind
-        max_block_ind = block_range[-1] if block_range[-1] > max_block_ind else max_block_ind
-    plt.ylabel('Coded BER')
-    plt.xlabel('Block Index')
-    plt.xlim([min_block_ind - 0.1, max_block_ind + 0.1])
-    plt.yscale('log')
-    plt.legend(loc='upper left')
-    plt.savefig(
-        os.path.join(FIGURES_DIR, folder_name,
-                     f'SNR {snr}, Block Length {val_block_length}, Error symbols {n_symbol}.png'),
-        bbox_inches='tight')
-    plt.show()
-
-
-def plot_schematic(all_curves, val_block_lengths):
-    # path for the saved figure
-    current_day_time = datetime.datetime.now()
-    folder_name = f'{current_day_time.month}-{current_day_time.day}-{current_day_time.hour}-{current_day_time.minute}'
-    if not os.path.isdir(os.path.join(FIGURES_DIR, folder_name)):
-        os.makedirs(os.path.join(FIGURES_DIR, folder_name))
-
-    plt.figure()
-    names = list(set([all_curves[i][1] for i in range(len(all_curves))]))
-    for method_name in names:
-        mean_sers = []
-        key = method_name.split(' ')[0]
-        for ser, cur_name, val_block_length, n_symbol in all_curves:
-            mean_ser = np.mean(ser)
-            if cur_name != method_name:
-                continue
-            mean_sers.append(mean_ser)
-        plt.plot(val_block_lengths, mean_sers, label=METHOD_NAMES[key],
-                 color=COLORS_DICT[key], marker=MARKERS_DICT[key],
-                 linestyle=LINESTYLES_DICT[key], linewidth=2.2)
-
-    plt.xticks(val_block_lengths, val_block_lengths)
-    plt.xlabel('SNR[dB]')
-    plt.ylabel('Coded BER')
-    plt.grid(which='both', ls='--')
-    plt.legend(loc='upper right', prop={'size': 15})
-    plt.savefig(os.path.join(FIGURES_DIR, folder_name, f'coded_ber_versus_block_length.png'),
-                bbox_inches='tight')
-    plt.show()
-
-
-def add_viterbi(all_curves, val_block_length, n_symbol, snr):
+def add_viterbi(all_curves, val_block_length, n_symbol, snr, channel_coefficients):
     dec = VATrainer(val_SNR_start=snr,
                     val_SNR_end=snr,
                     train_SNR_start=snr,
@@ -185,7 +43,7 @@ def add_viterbi(all_curves, val_block_length, n_symbol, snr):
     all_curves.append((ser, method_name, val_block_length, n_symbol))
 
 
-def add_joint_viterbinet(all_curves, val_block_length, n_symbol, snr):
+def add_joint_viterbinet(all_curves, val_block_length, n_symbol, snr, channel_coefficients):
     dec = VNETTrainer(val_SNR_start=snr,
                       val_SNR_end=snr,
                       train_SNR_start=snr,
@@ -218,7 +76,7 @@ def add_joint_viterbinet(all_curves, val_block_length, n_symbol, snr):
     all_curves.append((ser, method_name, val_block_length, n_symbol))
 
 
-def add_joint_rnn(all_curves, val_block_length, n_symbol, snr):
+def add_joint_rnn(all_curves, val_block_length, n_symbol, snr, channel_coefficients):
     dec = LSTMTrainer(val_SNR_start=snr,
                       val_SNR_end=snr,
                       train_SNR_start=snr,
@@ -251,7 +109,7 @@ def add_joint_rnn(all_curves, val_block_length, n_symbol, snr):
     all_curves.append((ser, method_name, val_block_length, n_symbol))
 
 
-def add_viterbinet(all_curves, val_block_length, n_symbol, snr):
+def add_viterbinet(all_curves, val_block_length, n_symbol, snr, channel_coefficients):
     dec = VNETTrainer(val_SNR_start=snr,
                       val_SNR_end=snr,
                       train_SNR_start=snr,
@@ -284,7 +142,7 @@ def add_viterbinet(all_curves, val_block_length, n_symbol, snr):
     all_curves.append((ser, method_name, val_block_length, n_symbol))
 
 
-def add_rnn(all_curves, val_block_length, n_symbol, snr):
+def add_rnn(all_curves, val_block_length, n_symbol, snr, channel_coefficients):
     dec = LSTMTrainer(val_SNR_start=snr,
                       val_SNR_end=snr,
                       train_SNR_start=snr,
@@ -317,7 +175,7 @@ def add_rnn(all_curves, val_block_length, n_symbol, snr):
     all_curves.append((ser, method_name, val_block_length, n_symbol))
 
 
-def add_onlinemetaviterbinet(all_curves, val_block_length, n_symbol, snr):
+def add_onlinemetaviterbinet(all_curves, val_block_length, n_symbol, snr, channel_coefficients):
     dec = METAVNETTrainer(val_SNR_start=snr,
                           val_SNR_end=snr,
                           train_SNR_start=snr,
@@ -354,7 +212,7 @@ def add_onlinemetaviterbinet(all_curves, val_block_length, n_symbol, snr):
     all_curves.append((ser, method_name, val_block_length, n_symbol))
 
 
-def add_online_metarnn(all_curves, val_block_length, n_symbol, snr):
+def add_online_metarnn(all_curves, val_block_length, n_symbol, snr, channel_coefficients):
     dec = MetaLSTMTrainer(val_SNR_start=snr,
                           val_SNR_end=snr,
                           train_SNR_start=snr,
@@ -391,61 +249,25 @@ def add_online_metarnn(all_curves, val_block_length, n_symbol, snr):
     all_curves.append((ser, method_name, val_block_length, n_symbol))
 
 
-def add_offlinemetaviterbinet(all_curves, val_block_length, n_symbol, snr):
-    dec = METAVNETTrainer(val_SNR_start=snr,
-                          val_SNR_end=snr,
-                          train_SNR_start=snr,
-                          train_SNR_end=snr,
-                          val_SNR_step=2,
-                          train_SNR_step=2,
-                          val_block_length=val_block_length,
-                          train_block_length=val_block_length,
-                          noisy_est_var=0,
-                          fading_in_channel=False,
-                          fading_in_decoder=False,
-                          use_ecc=True,
-                          gamma_start=0.2,
-                          gamma_end=0.2,
-                          gamma_num=1,
-                          channel_type='ISI_AWGN',
-                          channel_coefficients='cost2100',
-                          subframes_in_frame=25,
-                          val_frames=VAL_FRAMES,
-                          eval_mode='by_word',
-                          n_symbols=n_symbol,
-                          fading_taps_type=1,
-                          self_supervised_iterations=200,
-                          self_supervised=True,
-                          ser_thresh=0.02,
-                          online_meta=False,
-                          buffer_empty=True,
-                          weights_init='last_frame',
-                          weights_dir=os.path.join(WEIGHTS_DIR,
-                                                   f'meta_training_{val_block_length}_{n_symbol}_channel1'))
-    method_name = f'OfflineMetaViterbiNet'
-    ser = get_ser_plot(dec, run_over=run_over,
-                       method_name=method_name + f' - SNR {snr}, Block Length {val_block_length}, Error symbols {n_symbol}')
-    all_curves.append((ser, method_name, val_block_length, n_symbol))
-
-
 VAL_FRAMES = 20
 
 if __name__ == '__main__':
     run_over = False
-    parameters = [(7, 120), (8, 120)]
+    parameters = [(7, 120)]  # ,(8, 120)
     n_symbol = 2
+    channel_coefficients = 'cost2100'  # 'time_decay','cost2100'
 
     for snr, val_block_length in parameters:
         all_curves = []
         print(snr, val_block_length, n_symbol)
-        # add_joint_viterbinet(all_curves, val_block_length, n_symbol, snr)
-        # add_joint_rnn(all_curves, val_block_length, n_symbol, snr)
-        # add_online_metarnn(all_curves, val_block_length, n_symbol, snr)
-        # add_rnn(all_curves, val_block_length, n_symbol, snr)
-        # add_viterbinet(all_curves, val_block_length, n_symbol, snr)
-        # add_onlinemetaviterbinet(all_curves, val_block_length, n_symbol, snr)
-        add_viterbi(all_curves, val_block_length, n_symbol, snr)
+        add_joint_viterbinet(all_curves, val_block_length, n_symbol, snr, channel_coefficients)
+        add_joint_rnn(all_curves, val_block_length, n_symbol, snr, channel_coefficients)
+        add_viterbinet(all_curves, val_block_length, n_symbol, snr, channel_coefficients)
+        add_rnn(all_curves, val_block_length, n_symbol, snr, channel_coefficients)
+        add_onlinemetaviterbinet(all_curves, val_block_length, n_symbol, snr, channel_coefficients)
+        add_online_metarnn(all_curves, val_block_length, n_symbol, snr, channel_coefficients)
+        add_viterbi(all_curves, val_block_length, n_symbol, snr, channel_coefficients)
 
-        # plot_all_curves_aggregated(all_curves, val_block_length, n_symbol, snr)
+        plot_all_curves_aggregated(all_curves, val_block_length, n_symbol, snr)
         # plot_all_curves(all_curves, val_block_length, n_symbol)
     # plot_schematic(all_curves, snr_values)

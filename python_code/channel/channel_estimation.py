@@ -1,4 +1,4 @@
-from python_code.plotters.plotting_config import *
+from python_code.plotters.plotter_config import *
 from dir_definitions import COST2100_DIR
 import matplotlib.pyplot as plt
 import numpy as np
@@ -51,9 +51,9 @@ if __name__ == '__main__':
     memory_length = 4
     gamma = 0.2
     noisy_est_var = 0
-    channel_coefficients = 'time_decay'  # 'time_decay','cost2100'
+    channel_coefficients = 'cost2100'  # 'time_decay','cost2100'
     fading_taps_type = 1
-    fading = True
+    fading = False
     channel_length = 300
 
     total_h = np.empty([channel_length, memory_length])
