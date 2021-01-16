@@ -1,4 +1,6 @@
+from python_code.plotters.plotting_config import *
 from dir_definitions import COST2100_DIR
+import matplotlib.pyplot as plt
 import numpy as np
 import scipy.io
 import os
@@ -19,12 +21,12 @@ def estimate_channel(memory_length: int, gamma: float, channel_coefficients: str
     if channel_coefficients == 'time_decay':
         h = np.reshape(np.exp(-gamma * np.arange(memory_length)), [1, memory_length])
     elif channel_coefficients == 'cost2100':
-        total_h = np.empty([200, memory_length])
+        total_h = np.empty([500, memory_length])
         for i in range(memory_length):
-            total_h[:, i] = scipy.io.loadmat(os.path.join(COST2100_DIR, f'h_0.0{2 * i + 1}'))[
+            total_h[:, i] = scipy.io.loadmat(os.path.join(COST2100_DIR, f'combined_h_{i}'))[
                 'h_channel_response_mag'].reshape(-1)
         # scale min-max values of h to the range 0-1
-        total_h = (total_h - total_h.min()) / (total_h.max() - total_h.min())
+        # total_h = (total_h - total_h.min()) / (total_h.max() - total_h.min())
         h = np.reshape(total_h[index], [1, memory_length])
     else:
         raise ValueError('No such channel_coefficients value!!!')
@@ -40,11 +42,28 @@ def estimate_channel(memory_length: int, gamma: float, channel_coefficients: str
             fading_taps = 5 * np.array([51, 39, 33, 21])
             fading_taps = np.maximum(fading_taps - 1.5 * index, 10 * np.ones(4)) - 1e-5
             h *= (0.8 + 0.2 * np.cos(np.pi * index / fading_taps)).reshape(1, memory_length)
-        elif fading_taps_type == 3:
-            fading_taps = 5 * np.array([51, 39, 33, 21])
-            fading_taps = np.concatenate(
-                [np.array([205]), np.maximum(fading_taps[1:] - 1.5 * index, -np.ones(3)) - 1e-5])
-            h *= (0.8 + 0.2 * np.cos(2 * np.pi * index / fading_taps)).reshape(1, memory_length)
         else:
             raise ValueError("No such fading tap type!!!")
     return h
+
+
+if __name__ == '__main__':
+    memory_length = 4
+    gamma = 0.2
+    noisy_est_var = 0
+    index = 0
+    channel_coefficients = 'time_decay'  # 'time_decay','cost2100'
+    fading_taps_type = 1
+    fading = True
+    channel_length = 300
+
+    total_h = np.empty([channel_length, memory_length])
+    for index in range(channel_length):
+        total_h[index] = estimate_channel(memory_length, gamma, channel_coefficients, noisy_est_var,
+                             fading, index, fading_taps_type)
+    for i in range(memory_length):
+        plt.plot(total_h[:, i], label=f'Tap {i}')
+    plt.xlabel('Block Index')
+    plt.ylabel('Magnitude')
+    plt.legend(loc='upper left')
+    plt.show()

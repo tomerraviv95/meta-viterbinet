@@ -23,7 +23,8 @@ class VADetector(nn.Module):
                  val_words: int,
                  channel_type: str,
                  noisy_est_var: float,
-                 fading: bool):
+                 fading: bool,
+                 channel_coefficients: str):
 
         super(VADetector, self).__init__()
         self.memory_length = memory_length
@@ -33,6 +34,7 @@ class VADetector(nn.Module):
         self.channel_type = channel_type
         self.noisy_est_var = noisy_est_var
         self.fading = fading
+        self.channel_coefficients = channel_coefficients
         self.transition_table_array = create_transition_table(n_states)
         self.transition_table = torch.Tensor(self.transition_table_array).to(device)
 
@@ -48,16 +50,18 @@ class VADetector(nn.Module):
         state_priors = np.dot(all_states_symbols, h.T)
         return torch.Tensor(state_priors).to(device)
 
-    def compute_likelihood_priors(self, y: torch.Tensor, snr: float, gamma: float):
+    def compute_likelihood_priors(self, y: torch.Tensor, snr: float, gamma: float, phase: str):
         # estimate channel per word (only changes between the h's if fading is True)
         h = np.concatenate([estimate_channel(self.memory_length, gamma, noisy_est_var=self.noisy_est_var,
-                                             fading=self.fading, index=index) for index in range(self.val_words)],
+                                             fading=self.fading, index=index,
+                                             channel_coefficients=self.channel_coefficients[phase]) for index in
+                            range(self.val_words)],
                            axis=0)
         # compute priors
         state_priors = self.compute_state_priors(h)
         if self.channel_type == 'ISI_AWGN':
             priors = y.unsqueeze(dim=2) - state_priors.T.repeat(
-                repeats=[y.shape[0] // state_priors.shape[1], 1]).unsqueeze(
+                repeats=[y.shape[0] // state_priors.shape[1] + 1, 1]).unsqueeze(
                 dim=1)
             # to llr representation
             priors = priors ** 2 / 2 - math.log(math.sqrt(2 * math.pi))
@@ -86,7 +90,7 @@ class VADetector(nn.Module):
         in_prob = torch.zeros([y.shape[0], self.n_states]).to(device)
 
         # compute transition likelihood priors
-        priors = self.compute_likelihood_priors(y, snr, gamma)
+        priors = self.compute_likelihood_priors(y, snr, gamma, phase)
 
         if phase == 'val':
             decoded_word = torch.zeros(y.shape).to(device)

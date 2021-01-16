@@ -35,7 +35,8 @@ class VATrainer(Trainer):
                                    val_words=self.val_frames * self.subframes_in_frame,
                                    channel_type=self.channel_type,
                                    noisy_est_var=self.noisy_est_var,
-                                   fading=self.fading_in_decoder)
+                                   fading=self.fading_in_decoder,
+                                   channel_coefficients=self.channel_coefficients)
 
     def load_weights(self, snr: float, gamma: float):
         pass

@@ -1,5 +1,5 @@
 # general
-run_name: 'meta_training_200_2_cost2' # training_200_2_channel1
+run_name: 'rnn_meta_training_120_2_channel1' # training_200_2_channel1
 
 # coding parameters
 use_ecc: True # True, False
@@ -8,9 +8,9 @@ n_symbols: 2
 # channel
 memory_length: 4
 channel_type: 'ISI_AWGN' # 'ISI_AWGN','Poisson'
-channel_coefficients: 'cost2100' # 'time_decay','cost2100'
+channel_coefficients: 'time_decay' # 'time_decay','cost2100'
 noisy_est_var: 0 # 0, 0.1 for ISI_AWGN, 0.08 for Poisson
-fading_in_channel: False # True, False
+fading_in_channel: True # True, False
 fading_in_decoder: False # True, False
 fading_taps_type: 1 # 1,2 or 3
 subframes_in_frame: 25
@@ -21,21 +21,21 @@ gamma_end: 0.2
 gamma_num: 1
 
 # validation hyperparameters
-val_block_length: 200
-val_frames: 8
-val_SNR_start: 12
-val_SNR_end: 12
-val_SNR_step: 2
+val_block_length: 120
+val_frames: 10
+val_SNR_start: 8
+val_SNR_end: 8
+val_SNR_step: 1
 eval_mode: 'by_word' # 'aggregated','by_word'
 
 # train hyperparameters
-train_block_length: 200
+train_block_length: 120
 train_frames: 8
 train_minibatch_num: 25
 train_minibatch_size: 32
-train_SNR_start: 12
-train_SNR_end: 12
-train_SNR_step: 2
+train_SNR_start: 8
+train_SNR_end: 8
+train_SNR_step: 1
 lr: 0.001 # learning rate
 loss_type: 'CrossEntropy' # 'BCE','CrossEntropy','MSE'
 print_every_n_train_minibatches: 1

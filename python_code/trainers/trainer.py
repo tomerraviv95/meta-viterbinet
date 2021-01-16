@@ -429,7 +429,7 @@ class Trainer(object):
                     if minibatch % self.print_every_n_train_minibatches == 0:
                         # evaluate performance
                         ser = self.single_eval_at_point(snr, gamma)
-                        print(f'Minibatch {minibatch}, ser - {ser}')
+                        print(f'Minibatch {minibatch}, ser - {ser}, loss - {loss_query}')
                         # save best weights
                         self.save_weights(float(loss_query), snr, gamma)
 
@@ -484,15 +484,16 @@ class Trainer(object):
                     transmitted_words, received_words = self.channel_dataset['train'].__getitem__(snr_list=[snr],
                                                                                                   gamma=gamma)
                     # run training loops
+                    current_loss = 0
                     for i in range(self.train_frames * self.subframes_in_frame):
                         # pass through detector
                         soft_estimation = self.detector(received_words[i].reshape(1, -1), 'train')
-                        current_loss = self.run_train_loop(soft_estimation, transmitted_words[i].reshape(1, -1))
+                        current_loss += self.run_train_loop(soft_estimation, transmitted_words[i].reshape(1, -1))
 
                     if minibatch % self.print_every_n_train_minibatches == 0:
                         # evaluate performance
                         ser = self.single_eval_at_point(snr, gamma)
-                        print(f'Minibatch {minibatch}, Loss {current_loss}, ser - {ser}')
+                        print(f'Minibatch {minibatch}, ser - {ser}, loss {current_loss}')
                         # save best weights
                         if ser < best_ser:
                             self.save_weights(current_loss, snr, gamma)
