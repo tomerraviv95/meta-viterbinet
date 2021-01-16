@@ -5,6 +5,8 @@ import numpy as np
 import scipy.io
 import os
 
+COST_LENGTH = 300
+
 
 def estimate_channel(memory_length: int, gamma: float, channel_coefficients: str, noisy_est_var: float = 0,
                      fading: bool = False, index: int = 0, fading_taps_type: int = 1):
@@ -21,7 +23,7 @@ def estimate_channel(memory_length: int, gamma: float, channel_coefficients: str
     if channel_coefficients == 'time_decay':
         h = np.reshape(np.exp(-gamma * np.arange(memory_length)), [1, memory_length])
     elif channel_coefficients == 'cost2100':
-        total_h = np.empty([500, memory_length])
+        total_h = np.empty([COST_LENGTH, memory_length])
         for i in range(memory_length):
             total_h[:, i] = scipy.io.loadmat(os.path.join(COST2100_DIR, f'combined_h_{i}'))[
                 'h_channel_response_mag'].reshape(-1)
@@ -34,7 +36,7 @@ def estimate_channel(memory_length: int, gamma: float, channel_coefficients: str
     if noisy_est_var > 0:
         h[:, 1:] += np.random.normal(0, noisy_est_var ** 0.5, [1, memory_length - 1])
     # fading in channel taps
-    if fading:
+    if fading and channel_coefficients == 'time_decay':
         if fading_taps_type == 1:
             fading_taps = np.array([51, 39, 33, 21])
             h *= (0.8 + 0.2 * np.cos(2 * np.pi * index / fading_taps)).reshape(1, memory_length)
@@ -54,12 +56,12 @@ if __name__ == '__main__':
     channel_coefficients = 'cost2100'  # 'time_decay','cost2100'
     fading_taps_type = 1
     fading = False
-    channel_length = 300
+    channel_length = COST_LENGTH
 
     total_h = np.empty([channel_length, memory_length])
     for index in range(channel_length):
         total_h[index] = estimate_channel(memory_length, gamma, channel_coefficients, noisy_est_var,
-                             fading, index, fading_taps_type)
+                                          fading, index, fading_taps_type)
     for i in range(memory_length):
         plt.plot(total_h[:, i], label=f'Tap {i}')
     plt.xlabel('Block Index')
