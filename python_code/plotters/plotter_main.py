@@ -121,7 +121,6 @@ if __name__ == '__main__':
                   (10, 120),
                   (11, 120),
                   (12, 120)]
-
     n_symbol = 2
     channel_coefficients = 'cost2100'  # 'time_decay','cost2100'
     all_curves = []
@@ -147,10 +146,10 @@ if __name__ == '__main__':
         add_viterbinet(all_curves, current_params)
         add_rnn(all_curves,current_params)
         add_onlinemetaviterbinet(all_curves, current_params)
-        # add_online_metarnn(all_curves,current_params)
+        add_online_metarnn(all_curves,current_params)
         add_viterbi(all_curves, current_params)
 
-        # plot_all_curves_aggregated(all_curves, val_block_length, n_symbol, snr)
+        plot_all_curves_aggregated(all_curves, val_block_length, n_symbol, snr)
 
-    snr_values = [x[0] for x in parameters]
-    plot_schematic(all_curves, snr_values)
+    # snr_values = [x[0] for x in parameters]
+    # plot_schematic(all_curves, snr_values)

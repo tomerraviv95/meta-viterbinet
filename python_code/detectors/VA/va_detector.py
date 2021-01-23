@@ -61,7 +61,7 @@ class VADetector(nn.Module):
         state_priors = self.compute_state_priors(h)
         if self.channel_type == 'ISI_AWGN':
             priors = y.unsqueeze(dim=2) - state_priors.T.repeat(
-                repeats=[y.shape[0] // state_priors.shape[1] + 1, 1]).unsqueeze(
+                repeats=[y.shape[0] // state_priors.shape[1], 1]).unsqueeze(
                 dim=1)
             # to llr representation
             priors = priors ** 2 / 2 - math.log(math.sqrt(2 * math.pi))

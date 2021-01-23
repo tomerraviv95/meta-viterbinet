@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import math
 
-MIN_BER_COEF = 0.8
+MIN_BER_COEF = 0.2
 MARKER_EVERY = 20
 
 COLORS_DICT = {'ViterbiNet': 'green',

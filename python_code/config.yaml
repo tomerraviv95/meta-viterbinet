@@ -3,7 +3,7 @@ run_name: 'rnn_meta_training_120_2_channel1' # training_200_2_channel1
 
 # coding parameters
 use_ecc: True # True, False
-n_symbols: 2
+n_symbols: 32
 
 # channel
 memory_length: 4
@@ -11,7 +11,7 @@ channel_type: 'ISI_AWGN' # 'ISI_AWGN','Poisson'
 channel_coefficients: 'time_decay' # 'time_decay','cost2100'
 noisy_est_var: 0 # 0, 0.1 for ISI_AWGN, 0.08 for Poisson
 fading_in_channel: True # True, False
-fading_in_decoder: False # True, False
+fading_in_decoder: True # True, False
 fading_taps_type: 1 # 1,2 or 3
 subframes_in_frame: 25
 
@@ -21,12 +21,12 @@ gamma_end: 0.2
 gamma_num: 1
 
 # validation hyperparameters
-val_block_length: 120
-val_frames: 12
-val_SNR_start: 11
-val_SNR_end: 11
+val_block_length: 1784
+val_frames: 5
+val_SNR_start: 12
+val_SNR_end: 12
 val_SNR_step: 1
-eval_mode: 'by_word' # 'aggregated','by_word'
+eval_mode: 'aggregated' # 'aggregated','by_word'
 
 # train hyperparameters
 train_block_length: 120
