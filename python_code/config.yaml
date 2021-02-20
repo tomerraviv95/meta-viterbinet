@@ -1,5 +1,5 @@
 # general
-run_name: 'rnn_meta_training_120_2_channel1' # training_200_2_channel1
+run_name: 'rnn_meta_training_120_2_channel1'
 
 # coding parameters
 use_ecc: True # True, False
