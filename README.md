@@ -33,7 +33,7 @@ This repository implements classical and machine-learning based detectors for a 
 
 # Folders Structure
 
-## python_code 
+## python-code 
 
 The python simulations of the simplified communication chain: encoder, channel and detectors.
 
