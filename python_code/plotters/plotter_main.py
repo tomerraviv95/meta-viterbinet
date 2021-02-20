@@ -112,13 +112,14 @@ HYPERPARAMS_DICT = {'val_SNR_step': 2,
 
 if __name__ == '__main__':
     run_over = False
+    plot_by_block = False  # either plot by block, or by SNR
+
     parameters = [(7, 120),
                   (8, 120),
                   (9, 120),
                   (10, 120),
                   (11, 120),
                   (12, 120)]
-    # parameters = [(12, 120)]
     n_symbol = 2
     channel_coefficients = 'cost2100'  # 'time_decay','cost2100'
     all_curves = []
@@ -147,7 +148,9 @@ if __name__ == '__main__':
         add_online_metarnn(all_curves, current_params)
         add_viterbi(all_curves, current_params)
 
-        # plot_all_curves_aggregated(all_curves, val_block_length, n_symbol, snr)
+        if plot_by_block:
+            plot_all_curves_aggregated(all_curves, val_block_length, n_symbol, snr)
 
     snr_values = [x[0] for x in parameters]
-    plot_schematic(all_curves, snr_values)
+    if not plot_by_block:
+        plot_schematic(all_curves, snr_values)

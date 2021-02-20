@@ -15,6 +15,11 @@ def load_pkl(pkls_path: str):
 
 
 def copy_model(source_model: torch.nn.Module, dest_model: torch.nn.Module):
+    """
+    Copy all model parameters from source to dest
+    :param source_model: model from which to copy the parameters
+    :param dest_model: copy-to model
+    """
     source_model_params = list(source_model.parameters())
     dest_model_params = list(dest_model.parameters())
     n = len(source_model_params)

@@ -1,11 +1,8 @@
-import os
-
 from python_code.detectors.META_LSTM.meta_lstm_detector import MetaLSTMDetector
 from python_code.detectors.LSTM.lstm_detector import LSTMDetector
 from python_code.trainers.trainer import Trainer
-import torch
-
 from python_code.utils.python_utils import copy_model
+import torch
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -70,4 +67,3 @@ if __name__ == '__main__':
     dec = MetaLSTMTrainer()
     dec.train()
     # dec.evaluate()
-    # dec.count_parameters()

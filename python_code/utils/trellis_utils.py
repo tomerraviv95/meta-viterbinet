@@ -30,7 +30,7 @@ def acs_block(in_prob: torch.Tensor, llrs: torch.Tensor, transition_table: torch
     return torch.min(reshaped_trellis, dim=2)
 
 
-def calculate_states(memory_length: int, transmitted_words: torch.Tensor):
+def calculate_states(memory_length: int, transmitted_words: torch.Tensor) -> torch.Tensor:
     """
     calculates the state for the transmitted words
     :param memory_length: length of channel memory

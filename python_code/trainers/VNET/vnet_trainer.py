@@ -2,7 +2,6 @@ from python_code.detectors.VNET.vnet_detector import VNETDetector
 from python_code.utils.trellis_utils import calculate_states
 from python_code.trainers.trainer import Trainer
 import torch
-import os
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -65,4 +64,3 @@ if __name__ == '__main__':
     dec = VNETTrainer()
     dec.train()
     # dec.evaluate()
-    # dec.count_parameters()

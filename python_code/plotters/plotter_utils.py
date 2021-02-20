@@ -65,7 +65,8 @@ def get_ser_plot(dec: Trainer, run_over: bool, method_name: str):
     return ser_total
 
 
-def plot_all_curves_aggregated(all_curves: List[Tuple[np.ndarray, np.ndarray, str]], val_block_length, n_symbol, snr):
+def plot_all_curves_aggregated(all_curves: List[Tuple[np.ndarray, np.ndarray, str]], val_block_length: int,
+                               n_symbol: int, snr: float):
     # path for the saved figure
     current_day_time = datetime.datetime.now()
     folder_name = f'{current_day_time.month}-{current_day_time.day}-{current_day_time.hour}-{current_day_time.minute}'
@@ -76,14 +77,13 @@ def plot_all_curves_aggregated(all_curves: List[Tuple[np.ndarray, np.ndarray, st
     min_block_ind = math.inf
     min_ber = math.inf
     max_block_ind = -math.inf
-    n_elements = 300
     # iterate all curves, plot each one
     for ser, method_name, _, _ in all_curves:
         print(method_name)
         print(len(ser))
-        block_range = np.arange(1, len(ser) + 1)[:n_elements]
+        block_range = np.arange(1, len(ser) + 1)
         key = method_name.split(' ')[0]
-        agg_ser = (np.cumsum(ser) / np.arange(1, len(ser) + 1))[:n_elements]
+        agg_ser = (np.cumsum(ser) / np.arange(1, len(ser) + 1))
         plt.plot(block_range, agg_ser,
                  label=METHOD_NAMES[key],
                  color=COLORS_DICT[key], marker=MARKERS_DICT[key],
@@ -104,7 +104,7 @@ def plot_all_curves_aggregated(all_curves: List[Tuple[np.ndarray, np.ndarray, st
     plt.show()
 
 
-def plot_schematic(all_curves, snr_values):
+def plot_schematic(all_curves: List[Tuple[np.ndarray, np.ndarray, str]], snr_values: List[float]):
     # path for the saved figure
     current_day_time = datetime.datetime.now()
     folder_name = f'{current_day_time.month}-{current_day_time.day}-{current_day_time.hour}-{current_day_time.minute}'

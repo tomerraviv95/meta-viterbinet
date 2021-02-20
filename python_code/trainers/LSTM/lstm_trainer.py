@@ -1,5 +1,3 @@
-import os
-
 from python_code.detectors.LSTM.lstm_detector import LSTMDetector
 from python_code.trainers.trainer import Trainer
 import torch
@@ -59,4 +57,3 @@ if __name__ == '__main__':
     dec = LSTMTrainer()
     dec.train()
     # dec.evaluate()
-    # dec.count_parameters()

@@ -1,5 +1,3 @@
-from typing import Tuple, Union
-
 from python_code.channel.channel_dataset import ChannelModelDataset
 from python_code.ecc.rs_main import decode, encode
 from python_code.utils.metrics import calculate_error_rates
@@ -7,12 +5,13 @@ from dir_definitions import CONFIG_PATH, WEIGHTS_DIR
 from torch.nn import CrossEntropyLoss, BCELoss, MSELoss
 from python_code.utils.python_utils import copy_model
 from torch.optim import RMSprop, Adam, SGD
+from typing import Tuple, Union
 from shutil import copyfile
+from time import time
+import numpy as np
 import yaml
 import torch
 import os
-from time import time
-import numpy as np
 import math
 import copy
 
@@ -96,6 +95,8 @@ class Trainer(object):
         self.initialize_dataloaders()
         self.initialize_detector()
         self.initialize_meta_detector()
+
+        # calculate data subframes indices. We will calculate ser only over these values.
         self.data_indices = torch.Tensor(list(filter(lambda x: x % self.subframes_in_frame != 0,
                                                      [i for i in
                                                       range(self.val_frames * self.subframes_in_frame)]))).long()
@@ -336,8 +337,7 @@ class Trainer(object):
                         torch.randint(low=0, high=buffer_rx.shape[0] - 2, size=[self.meta_j_num])).to(
                         device)
                     for j_hat in j_hat_values:
-                        skip_num = 1  # torch.randint(low=0, high=3, size=[1]).to(device)
-                        cur_support_idx = j_hat + support_idx + skip_num
+                        cur_support_idx = j_hat + support_idx + 1
                         cur_query_idx = j_hat + query_idx + 1
                         self.meta_train_loop(buffer_rx, buffer_tx, cur_support_idx, cur_query_idx)
                 copy_model(source_model=self.detector, dest_model=self.saved_detector)
@@ -518,6 +518,7 @@ class Trainer(object):
             print(f'loading model from snr {snr} and gamma {gamma}')
             weights_path = os.path.join(self.weights_dir, f'snr_{snr}_gamma_{gamma}.pt')
             if not os.path.isfile(weights_path):
+                # if weights do not exist, train on the synthetic channel. Then validate on the test channel.
                 self.fading_taps_type = 1
                 os.makedirs(self.weights_dir, exist_ok=True)
                 self.train()
@@ -541,12 +542,3 @@ class Trainer(object):
         rand_ind = torch.multinomial(torch.arange(gt_examples.shape[0]).float(),
                                      self.train_minibatch_size).long().to(device)
         return gt_examples[rand_ind], soft_estimation[rand_ind]
-
-    def count_parameters(self):
-        print(sum(p.numel() for p in self.detector.parameters() if p.requires_grad))
-
-    def compare_parameters(self, detector1, detector2):
-        cum_sum = 0
-        for p1, p2 in zip(detector1.parameters(), detector2.parameters()):
-            cum_sum += torch.sum(torch.abs(p1 - p2))
-        print(cum_sum)
