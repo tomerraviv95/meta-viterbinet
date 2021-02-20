@@ -21,7 +21,8 @@ class LSTMDetector(nn.Module):
         self.lstm = nn.LSTM(INPUT_SIZE, HIDDEN_SIZE, NUM_LAYERS, batch_first=True, bidirectional=False).to(device)
         self.fc = nn.Linear(HIDDEN_SIZE, N_CLASSES).to(device)
 
-    def forward(self, y: torch.Tensor, phase: str, snr: float = None, gamma: float = None) -> torch.Tensor:
+    def forward(self, y: torch.Tensor, phase: str, snr: float = None, gamma: float = None,
+                count: int = None) -> torch.Tensor:
         """
         The forward pass of the LSTM detector
         :param y: input values, size [batch_size,transmission_length]

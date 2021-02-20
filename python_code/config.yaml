@@ -3,7 +3,7 @@ run_name: 'rnn_meta_training_120_2_channel1' # training_200_2_channel1
 
 # coding parameters
 use_ecc: True # True, False
-n_symbols: 32
+n_symbols: 2
 
 # channel
 memory_length: 4
@@ -21,10 +21,10 @@ gamma_end: 0.2
 gamma_num: 1
 
 # validation hyperparameters
-val_block_length: 1784
+val_block_length: 120
 val_frames: 5
-val_SNR_start: 12
-val_SNR_end: 12
+val_SNR_start: 10
+val_SNR_end: 10
 val_SNR_step: 1
 eval_mode: 'aggregated' # 'aggregated','by_word'
 
@@ -33,8 +33,8 @@ train_block_length: 120
 train_frames: 12
 train_minibatch_num: 25
 train_minibatch_size: 32
-train_SNR_start: 11
-train_SNR_end: 11
+train_SNR_start: 10
+train_SNR_end: 10
 train_SNR_step: 1
 lr: 0.001 # learning rate
 loss_type: 'CrossEntropy' # 'BCE','CrossEntropy','MSE'

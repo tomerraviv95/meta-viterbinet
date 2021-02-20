@@ -32,8 +32,8 @@ LINESTYLES_DICT = {'ViterbiNet': 'solid',
                    'Joint': 'solid',
                    'JointRNN': 'dotted',
                    'Viterbi': 'solid',
-                   'OnlineRNN': 'solid',
-                   'OnlineMetaViterbiNet': 'dotted'}
+                   'OnlineRNN': 'dotted',
+                   'OnlineMetaViterbiNet': 'solid'}
 
 METHOD_NAMES = {'ViterbiNet': 'Online ViterbiNet',
                 'LSTM': 'Online LSTM',
@@ -96,7 +96,7 @@ def plot_all_curves_aggregated(all_curves: List[Tuple[np.ndarray, np.ndarray, st
     plt.xlim([min_block_ind - 0.1, max_block_ind + 0.1])
     plt.ylim(bottom=MIN_BER_COEF * min_ber)
     plt.yscale('log')
-    plt.legend(loc='upper left')
+    plt.legend(loc='upper left', prop={'size': 15})
     plt.savefig(
         os.path.join(FIGURES_DIR, folder_name,
                      f'SNR {snr}, Block Length {val_block_length}, Error symbols {n_symbol}.png'),
@@ -130,10 +130,10 @@ def plot_schematic(all_curves, snr_values):
                  linestyle=LINESTYLES_DICT[key], linewidth=2.2)
 
     plt.xticks(snr_values, snr_values)
-    plt.xlabel('SNR[dB]')
+    plt.xlabel('SNR [dB]')
     plt.ylabel('Coded BER')
     plt.grid(which='both', ls='--')
-    plt.legend(loc='upper right', prop={'size': 15})
+    plt.legend(loc='lower left', prop={'size': 15})
     plt.yscale('log')
     plt.savefig(os.path.join(FIGURES_DIR, folder_name, f'coded_ber_versus_block_length.png'),
                 bbox_inches='tight')

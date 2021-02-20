@@ -197,7 +197,7 @@ class Trainer(object):
         self.gamma_range = np.linspace(self.gamma_start, self.gamma_end, self.gamma_num)
         self.frames_per_phase = {'train': self.train_frames, 'val': self.val_frames}
         self.block_lengths = {'train': self.train_block_length, 'val': self.val_block_length}
-        self.channel_coefficients = {'train': self.channel_coefficients, 'val': self.channel_coefficients}
+        self.channel_coefficients = {'train': 'time_decay', 'val': self.channel_coefficients}
         self.transmission_lengths = {
             'train': self.train_block_length if not self.use_ecc else self.train_block_length + 8 * self.n_symbols,
             'val': self.val_block_length if not self.use_ecc else self.val_block_length + 8 * self.n_symbols}
@@ -299,7 +299,7 @@ class Trainer(object):
         for count, (transmitted_word, received_word) in enumerate(zip(transmitted_words, received_words)):
             transmitted_word, received_word = transmitted_word.reshape(1, -1), received_word.reshape(1, -1)
             # detect
-            detected_word = self.detector(received_word, 'val', snr, gamma)
+            detected_word = self.detector(received_word, 'val', snr, gamma, count)
             if count in self.data_indices:
                 # decode
                 decoded_word = [decode(detected_word, self.n_symbols) for detected_word in detected_word.cpu().numpy()]

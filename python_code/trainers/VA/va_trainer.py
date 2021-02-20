@@ -36,6 +36,7 @@ class VATrainer(Trainer):
                                    channel_type=self.channel_type,
                                    noisy_est_var=self.noisy_est_var,
                                    fading=self.fading_in_decoder,
+                                   fading_taps_type=self.fading_taps_type,
                                    channel_coefficients=self.channel_coefficients)
 
     def load_weights(self, snr: float, gamma: float):

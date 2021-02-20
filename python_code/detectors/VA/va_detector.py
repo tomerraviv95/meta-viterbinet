@@ -24,6 +24,7 @@ class VADetector(nn.Module):
                  channel_type: str,
                  noisy_est_var: float,
                  fading: bool,
+                 fading_taps_type: int,
                  channel_coefficients: str):
 
         super(VADetector, self).__init__()
@@ -34,6 +35,7 @@ class VADetector(nn.Module):
         self.channel_type = channel_type
         self.noisy_est_var = noisy_est_var
         self.fading = fading
+        self.fading_taps_type = fading_taps_type
         self.channel_coefficients = channel_coefficients
         self.transition_table_array = create_transition_table(n_states)
         self.transition_table = torch.Tensor(self.transition_table_array).to(device)
@@ -50,13 +52,15 @@ class VADetector(nn.Module):
         state_priors = np.dot(all_states_symbols, h.T)
         return torch.Tensor(state_priors).to(device)
 
-    def compute_likelihood_priors(self, y: torch.Tensor, snr: float, gamma: float, phase: str):
+    def compute_likelihood_priors(self, y: torch.Tensor, snr: float, gamma: float, phase: str, count: int = None):
         # estimate channel per word (only changes between the h's if fading is True)
         h = np.concatenate([estimate_channel(self.memory_length, gamma, noisy_est_var=self.noisy_est_var,
-                                             fading=self.fading, index=index,
+                                             fading=self.fading, index=index, fading_taps_type=self.fading_taps_type,
                                              channel_coefficients=self.channel_coefficients[phase]) for index in
                             range(self.val_words)],
                            axis=0)
+        if count is not None:
+            h = h[count].reshape(1, -1)
         # compute priors
         state_priors = self.compute_state_priors(h)
         if self.channel_type == 'ISI_AWGN':
@@ -77,7 +81,8 @@ class VADetector(nn.Module):
             raise Exception('No such channel defined!!!')
         return priors
 
-    def forward(self, y: torch.Tensor, phase: str, snr: float, gamma: float):
+    def forward(self, y: torch.Tensor, phase: str, snr: float = None, gamma: float = None,
+                count: int = None) -> torch.Tensor:
         """
         The forward pass of the Viterbi algorithm
         :param y: input values (batch)
@@ -90,7 +95,7 @@ class VADetector(nn.Module):
         in_prob = torch.zeros([y.shape[0], self.n_states]).to(device)
 
         # compute transition likelihood priors
-        priors = self.compute_likelihood_priors(y, snr, gamma, phase)
+        priors = self.compute_likelihood_priors(y, snr, gamma, phase, count)
 
         if phase == 'val':
             decoded_word = torch.zeros(y.shape).to(device)
