@@ -12,7 +12,7 @@ Please cite our paper (*link will be here*), if the code is used for publishing 
 
 - [Introduction](#introduction)
 - [Folders Structure](#folders-structure)
-  * [python_code](#python-code)
+  * [python_code](#python_code)
     + [channel](#channel)
     + [detectors](#detectors)
     + [ecc](#ecc)
@@ -21,7 +21,7 @@ Please cite our paper (*link will be here*), if the code is used for publishing 
     + [utils](#utils)
     + [config](#config)
   * [resources](#resources)
-  * [dir_definitions](#dir-definitions)
+  * [dir_definitions](#dir_definitions)
 - [Execution](#execution)
   * [Environment Installation](#environment-installation)
 
@@ -33,7 +33,7 @@ This repository implements classical and machine-learning based detectors for a 
 
 # Folders Structure
 
-## python-code 
+## python_code 
 
 The python simulations of the simplified communication chain: encoder, channel and detectors.
 
