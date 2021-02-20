@@ -60,7 +60,7 @@ Wrappers for the training and evaluation of the detectors.
 
 The basic trainer class holds most used methods: train, meta-train and evaluation (per SNR/block, see the paper for the two types of eval). It is also used for parsing the config.yaml file and preparing the deep learning setup (loss, optimizer, ...).
 
-Each trainer inherets from the basic trainer class, extending it as needed.
+Each trainer inherets from the basic trainer class, extending it as needed. You can run each trainer with the train/evaluate commands in their __main__.
 
 ### utils
 
