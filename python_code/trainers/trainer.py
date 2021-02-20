@@ -38,11 +38,7 @@ class Trainer(object):
         self.fading_in_decoder = None
         self.fading_taps_type = None
         self.subframes_in_frame = None
-
-        # gamma
-        self.gamma_start = None
-        self.gamma_end = None
-        self.gamma_num = None
+        self.gamma = None
 
         # validation hyperparameters
         self.val_block_length = None
@@ -62,7 +58,6 @@ class Trainer(object):
         self.train_SNR_step = None
         self.lr = None  # learning rate
         self.loss_type = None
-        self.print_every_n_train_minibatches = None
         self.optimizer_type = None
 
         # self-supervised online training
@@ -194,7 +189,6 @@ class Trainer(object):
         """
         self.snr_range = {'train': np.arange(self.train_SNR_start, self.train_SNR_end + 1, step=self.train_SNR_step),
                           'val': np.arange(self.val_SNR_start, self.val_SNR_end + 1, step=self.val_SNR_step)}
-        self.gamma_range = np.linspace(self.gamma_start, self.gamma_end, self.gamma_num)
         self.frames_per_phase = {'train': self.train_frames, 'val': self.val_frames}
         self.block_lengths = {'train': self.train_block_length, 'val': self.val_block_length}
         self.channel_coefficients = {'train': 'time_decay', 'val': self.channel_coefficients}
@@ -263,12 +257,10 @@ class Trainer(object):
         """
         ser_total = np.zeros(len(self.snr_range['val']))
         with torch.no_grad():
-            for gamma_count, gamma in enumerate(self.gamma_range):
-                print(f'Starts evaluation at gamma {gamma}')
-                start = time()
-                ser_total += self.gamma_eval(gamma)
-                print(f'Done. time: {time() - start}, ser: {ser_total / (gamma_count + 1)}')
-        ser_total /= self.gamma_num
+            print(f'Starts evaluation at gamma {self.gamma}')
+            start = time()
+            ser_total += self.gamma_eval(self.gamma)
+            print(f'Done. time: {time() - start}, ser: {ser_total}')
         return ser_total
 
     def eval_by_word(self, snr: float, gamma: float) -> Union[float, np.ndarray]:
@@ -369,8 +361,7 @@ class Trainer(object):
             copy_model(source_model=self.saved_detector, dest_model=self.detector)
         elif self.weights_init == 'meta_training':
             snr = self.snr_range['val'][0]
-            gamma = self.gamma_range[0]
-            self.load_weights(snr, gamma)
+            self.load_weights(snr, self.gamma)
         else:
             raise ValueError('No such weights init!!!')
 
@@ -384,9 +375,8 @@ class Trainer(object):
             if not self.use_ecc:
                 raise ValueError('Only supports ecc')
             snr = self.snr_range['val'][0]
-            gamma = self.gamma_range[0]
-            self.load_weights(snr, gamma)
-            return self.eval_by_word(snr, gamma)
+            self.load_weights(snr, self.gamma)
+            return self.eval_by_word(snr, self.gamma)
         else:
             return self.evaluate_at_point()
 
@@ -399,39 +389,38 @@ class Trainer(object):
         """
         # initialize weights and loss
         for snr in self.snr_range['train']:
-            for gamma in self.gamma_range:
-                print(f'SNR - {snr}, Gamma - {gamma}')
-                # initialize weights and loss
-                self.initialize_detector()
-                self.deep_learning_setup()
 
-                for minibatch in range(1, self.train_minibatch_num + 1):
-                    # draw words from different channels
-                    transmitted_words, received_words = self.channel_dataset['train'].__getitem__(snr_list=[snr],
-                                                                                                  gamma=gamma)
-                    support_idx = torch.arange(-self.window_size - 1, -1).long().to(device)
-                    query_idx = -1 * torch.ones(1).long().to(device)
-                    j_hat_values = torch.unique(torch.randint(low=self.window_size,
-                                                              high=transmitted_words.shape[0],
-                                                              size=[self.meta_j_num])).to(device)
-                    if self.use_ecc:
-                        transmitted_words = torch.cat([torch.Tensor(
-                            encode(transmitted_word.int().cpu().numpy(), self.n_symbols).reshape(1, -1)).to(device)
-                                                       for transmitted_word in transmitted_words], dim=0)
+            print(f'SNR - {snr}, Gamma - {self.gamma}')
+            # initialize weights and loss
+            self.initialize_detector()
+            self.deep_learning_setup()
 
-                    loss_query = 0
-                    for j_hat in j_hat_values:
-                        cur_support_idx = j_hat + support_idx + 1
-                        cur_query_idx = j_hat + query_idx + 1
-                        loss_query += self.meta_train_loop(received_words, transmitted_words, cur_support_idx,
-                                                           cur_query_idx)
+            for minibatch in range(1, self.train_minibatch_num + 1):
+                # draw words from different channels
+                transmitted_words, received_words = self.channel_dataset['train'].__getitem__(snr_list=[snr],
+                                                                                              gamma=self.gamma)
+                support_idx = torch.arange(-self.window_size - 1, -1).long().to(device)
+                query_idx = -1 * torch.ones(1).long().to(device)
+                j_hat_values = torch.unique(torch.randint(low=self.window_size,
+                                                          high=transmitted_words.shape[0],
+                                                          size=[self.meta_j_num])).to(device)
+                if self.use_ecc:
+                    transmitted_words = torch.cat([torch.Tensor(
+                        encode(transmitted_word.int().cpu().numpy(), self.n_symbols).reshape(1, -1)).to(device)
+                                                   for transmitted_word in transmitted_words], dim=0)
 
-                    if minibatch % self.print_every_n_train_minibatches == 0:
-                        # evaluate performance
-                        ser = self.single_eval_at_point(snr, gamma)
-                        print(f'Minibatch {minibatch}, ser - {ser}, loss - {loss_query}')
-                        # save best weights
-                        self.save_weights(float(loss_query), snr, gamma)
+                loss_query = 0
+                for j_hat in j_hat_values:
+                    cur_support_idx = j_hat + support_idx + 1
+                    cur_query_idx = j_hat + query_idx + 1
+                    loss_query += self.meta_train_loop(received_words, transmitted_words, cur_support_idx,
+                                                       cur_query_idx)
+
+                # evaluate performance
+                ser = self.single_eval_at_point(snr, self.gamma)
+                print(f'Minibatch {minibatch}, ser - {ser}, loss - {loss_query}')
+                # save best weights
+                self.save_weights(float(loss_query), snr, self.gamma)
 
     def meta_train_loop(self, received_words: torch.Tensor, transmitted_words: torch.Tensor,
                         support_idx: torch.Tensor, query_idx: torch.Tensor):
@@ -471,36 +460,34 @@ class Trainer(object):
         """
         # batches loop
         for snr in self.snr_range['train']:
-            for gamma in self.gamma_range:
-                print(f'SNR - {snr}, Gamma - {gamma}')
+            print(f'SNR - {snr}, Gamma - {self.gamma}')
 
-                # initialize weights and loss
-                self.initialize_detector()
-                self.deep_learning_setup()
-                best_ser = math.inf
+            # initialize weights and loss
+            self.initialize_detector()
+            self.deep_learning_setup()
+            best_ser = math.inf
 
-                for minibatch in range(1, self.train_minibatch_num + 1):
-                    # draw words
-                    transmitted_words, received_words = self.channel_dataset['train'].__getitem__(snr_list=[snr],
-                                                                                                  gamma=gamma)
-                    # run training loops
-                    current_loss = 0
-                    for i in range(self.train_frames * self.subframes_in_frame):
-                        # pass through detector
-                        soft_estimation = self.detector(received_words[i].reshape(1, -1), 'train')
-                        current_loss += self.run_train_loop(soft_estimation, transmitted_words[i].reshape(1, -1))
+            for minibatch in range(1, self.train_minibatch_num + 1):
+                # draw words
+                transmitted_words, received_words = self.channel_dataset['train'].__getitem__(snr_list=[snr],
+                                                                                              gamma=self.gamma)
+                # run training loops
+                current_loss = 0
+                for i in range(self.train_frames * self.subframes_in_frame):
+                    # pass through detector
+                    soft_estimation = self.detector(received_words[i].reshape(1, -1), 'train')
+                    current_loss += self.run_train_loop(soft_estimation, transmitted_words[i].reshape(1, -1))
 
-                    if minibatch % self.print_every_n_train_minibatches == 0:
-                        # evaluate performance
-                        ser = self.single_eval_at_point(snr, gamma)
-                        print(f'Minibatch {minibatch}, ser - {ser}, loss {current_loss}')
-                        # save best weights
-                        if ser < best_ser:
-                            self.save_weights(current_loss, snr, gamma)
-                            best_ser = ser
+                # evaluate performance
+                ser = self.single_eval_at_point(snr, self.gamma)
+                print(f'Minibatch {minibatch}, ser - {ser}, loss {current_loss}')
+                # save best weights
+                if ser < best_ser:
+                    self.save_weights(current_loss, snr, self.gamma)
+                    best_ser = ser
 
-                print(f'best ser - {best_ser}')
-                print('*' * 50)
+            print(f'best ser - {best_ser}')
+            print('*' * 50)
 
     def run_train_loop(self, soft_estimation: torch.Tensor, transmitted_words: torch.Tensor):
         # calculate loss

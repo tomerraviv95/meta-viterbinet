@@ -1,15 +1,13 @@
+from python_code.channel.channel_estimation import estimate_channel
+from python_code.channel.modulator import BPSKModulator
+from python_code.channel.channel import ISIAWGNChannel
+from python_code.ecc.rs_main import encode
+from torch.utils.data import Dataset
+from numpy.random import mtrand
+from typing import Tuple, List
 import concurrent.futures
-import random
-
 import numpy as np
 import torch
-from numpy.random import mtrand
-from torch.utils.data import Dataset
-from typing import Tuple, List
-from python_code.channel.channel import ISIAWGNChannel, PoissonChannel
-from python_code.channel.channel_estimation import estimate_channel
-from python_code.channel.modulator import BPSKModulator, OnOffModulator
-from python_code.ecc.rs_main import encode
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -92,11 +90,6 @@ class ChannelModelDataset(Dataset):
             s = BPSKModulator.modulate(c)
             # transmit through noisy channel
             y = ISIAWGNChannel.transmit(s=s, random=self.random, h=h, snr=snr, memory_length=self.memory_length)
-        elif self.channel_type == 'Poisson':
-            # modulation
-            s = OnOffModulator.modulate(c)
-            # transmit through noisy channel
-            y = PoissonChannel.transmit(s=s, random=self.random, h=h, snr=snr, memory_length=self.memory_length)
         else:
             raise Exception('No such channel defined!!!')
         return y

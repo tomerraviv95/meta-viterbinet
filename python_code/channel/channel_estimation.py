@@ -27,14 +27,14 @@ def estimate_channel(memory_length: int, gamma: float, channel_coefficients: str
         for i in range(memory_length):
             total_h[:, i] = scipy.io.loadmat(os.path.join(COST2100_DIR, f'combined_h_{i}'))[
                 'h_channel_response_mag'].reshape(-1)
-        # scale min-max values of h to the range 0-1
-        # total_h = (total_h - total_h.min()) / (total_h.max() - total_h.min())
         h = np.reshape(total_h[index], [1, memory_length])
     else:
         raise ValueError('No such channel_coefficients value!!!')
+
     # noise in estimation of h taps
     if noisy_est_var > 0:
         h[:, 1:] += np.random.normal(0, noisy_est_var ** 0.5, [1, memory_length - 1])
+
     # fading in channel taps
     if fading and channel_coefficients == 'time_decay':
         if fading_taps_type == 1:
@@ -48,7 +48,7 @@ def estimate_channel(memory_length: int, gamma: float, channel_coefficients: str
             raise ValueError("No such fading tap type!!!")
     return h
 
-
+## get channels plot for paper
 if __name__ == '__main__':
     memory_length = 4
     gamma = 0.2
