@@ -46,29 +46,33 @@ In "channel.py", the ISI AWGN channel is implemented. "channel_estimation.py" is
 
 The backbone detectors: VA, VNET, LSTM, META_VNET and META_LSTM. The meta and non-meta detectors have slightly different API so they are seperated in the trainer class below. Also, we use VA as the ML detector, thus we assume full knowledge of the CSI. To have a single API across the detectors, the snr and gamma appear in all the approriate forward calls, but are omitted in the code itself. A factory design pattern could have been a better fit here, and is left as future work.
 
+### ecc
+
+Error-correction codes functions. Code from [site](https://en.wikiversity.org/wiki/Reed%E2%80%93Solomon_codes_for_coders).
+
+### plotters
+
+Plotting of the FER versus SNR, and the FER versus the blocks. 
+
 ### trainers 
 
 Wrappers for the training and evaluation of the detectors.
 
-The basic trainer class holds most used methods: train, meta-train and evaluation. It is also used for parsing the config.yaml file, preparing the
+The basic trainer class holds most used methods: train, meta-train and evaluation (per SNR/block, see the paper for the two types of eval). It is also used for parsing the config.yaml file and preparing the deep learning setup (loss, optimizer, ...).
 
 Each trainer inherets from the basic trainer class, extending it as needed.
 
-### plotting
-
-Plotting of the FER versus SNR, and the FER versus the states. See Figures 4-6 in the paper.
-
 ### utils
 
-Extra utils for saving and loading pkls; tail-biting related calculations; and more...
+Extra utils for saving and loading pkls; calculating the accuracy over FER and BER; and transitioning over the trellis.
 
 ### config
 
-Controls all parameters and hyperparameters in Tables I and II.
+Controls all parameters and hyperparameters.
 
 ## resources
 
-Folder with all codes matrices.
+Keeps the channel coefficients matrix (4 taps over 300 blocks).
 
 ## dir_definitions 
 
