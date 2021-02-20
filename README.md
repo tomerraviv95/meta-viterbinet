@@ -72,7 +72,7 @@ Controls all parameters and hyperparameters.
 
 ## resources
 
-Keeps the channel coefficients matrix (4 taps over 300 blocks).
+Keeps the channel coefficients vectors (4 taps, each with 300 blocks).
 
 ## dir_definitions 
 
@@ -96,7 +96,7 @@ This code was simulated with GeForce RTX 2060 with driver version 432.00 and CUD
 
 3. Open Anaconda prompt and navigate to the cloned repository.
 
-4. Run the command "conda env create -f deep_ensemble.yml". This should install the required python environment.
+4. Run the command "conda env create -f metanet.yml". This should install the required python environment.
 
 5. Open the cloned directory using PyCharm.
 
@@ -110,7 +110,7 @@ This code was simulated with GeForce RTX 2060 with driver version 432.00 and CUD
 
 10. Select Existing environment and navigate to where the python.exe executable of the deep_ensemble environment is installed under the interpreter setting
 
-  - For windows its usually found at C:\users\<username>\anaconda3\envs\deep_ensemble\python.exe)
+  - For windows its usually found at C:\users\<username>\anaconda3\envs\metanet\python.exe)
 
   - For linux its usually found at /home/<username>/anaconda3
   
