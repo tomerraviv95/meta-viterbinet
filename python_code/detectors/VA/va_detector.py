@@ -1,9 +1,8 @@
 from python_code.channel.channel_estimation import estimate_channel
-from python_code.channel.modulator import BPSKModulator, OnOffModulator
+from python_code.channel.modulator import BPSKModulator
 import numpy as np
 import torch
 import torch.nn as nn
-from scipy.stats import poisson
 import math
 
 from python_code.utils.trellis_utils import create_transition_table, acs_block
@@ -45,8 +44,6 @@ class VADetector(nn.Module):
         all_states_binary = np.unpackbits(all_states_decimal, axis=1).astype(int)
         if self.channel_type == 'ISI_AWGN':
             all_states_symbols = BPSKModulator.modulate(all_states_binary[:, -self.memory_length:])
-        elif self.channel_type == 'Poisson':
-            all_states_symbols = OnOffModulator.modulate(all_states_binary[:, -self.memory_length:])
         else:
             raise Exception('No such channel defined!!!')
         state_priors = np.dot(all_states_symbols, h.T)
@@ -69,14 +66,6 @@ class VADetector(nn.Module):
                 dim=1)
             # to llr representation
             priors = priors ** 2 / 2 - math.log(math.sqrt(2 * math.pi))
-        elif self.channel_type == 'Poisson':
-            lambda_val = 10 ** (snr / 20) * state_priors + 1
-            repeated_lambda_val = lambda_val.T.repeat_interleave(y.shape[1], dim=0)
-            priors = poisson.pmf(y.cpu().numpy().reshape(-1, 1),
-                                 repeated_lambda_val.cpu().numpy()).reshape(y.shape[0],
-                                                                            y.shape[1],
-                                                                            -1)
-            priors = -torch.Tensor(priors).to(device)
         else:
             raise Exception('No such channel defined!!!')
         return priors

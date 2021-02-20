@@ -1,6 +1,5 @@
-from typing import Dict
-
 from python_code.utils.trellis_utils import create_transition_table, acs_block
+from typing import Dict
 import torch.nn as nn
 import torch
 
