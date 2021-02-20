@@ -14,16 +14,16 @@ Please cite our paper (*link will be here*), if the code is used for publishing 
 - [Folders Structure](#folders-structure)
   * [python_code](#python-code)
     + [channel](#channel)
-    + [decoders](#decoders)
+    + [detectors](#detectors)
+    + [ecc](#ecc)
+    + [plotters](#plotters)
     + [trainers](#trainers)
-    + [plotting](#plotting)
     + [utils](#utils)
     + [config](#config)
   * [resources](#resources)
   * [dir_definitions](#dir-definitions)
 - [Execution](#execution)
   * [Environment Installation](#environment-installation)
-- [Citation](#citation)
 
 <small><i><a href='http://ecotrust-canada.github.io/markdown-toc/'>Table of contents generated with markdown-toc</a></i></small>
 
@@ -35,19 +35,22 @@ This repository implements classical and machine-learning based detectors for a 
 
 ## python_code 
 
-The python simulations of the encoder & channel and decoders.
+The python simulations of the simplified communication chain: encoder, channel and detectors.
 
 ### channel 
 
-Includes the channel model and BPSK modulator. The main function is the channel dataset - a wrapper of the ground truth codewords, along with the received channel word. Used for training the decoders as well as evaluation.
+Includes all relevant channel functions and classes. The class in "channel_dataset.py" implements the main class for aggregating pairs of (transmitted,received) pairs. 
+In "channel.py", the ISI AWGN channel is implemented. "channel_estimation.py" is for the calculation of the h values. Lastly, the channel BPSK modulator lies in "channel_modulator.py".
 
-### decoders
+### detectors
 
-The backbone decoders: CVA, WCVA, WCVAE, gated WCVAE.
+The backbone detectors: VA, VNET, LSTM, META_VNET and META_LSTM. The meta and non-meta detectors have slightly different API so they are seperated in the trainer class below. Also, we use VA as the ML detector, thus we assume full knowledge of the CSI. To have a single API across the detectors, the snr and gamma appear in all the approriate forward calls, but are omitted in the code itself. A factory design pattern could have been a better fit here, and is left as future work.
 
 ### trainers 
 
-Wrappers for training and evaluation of the decoders. 
+Wrappers for the training and evaluation of the detectors.
+
+The basic trainer class holds most used methods: train, meta-train and evaluation. It is also used for parsing the config.yaml file, preparing the
 
 Each trainer inherets from the basic trainer class, extending it as needed.
 
