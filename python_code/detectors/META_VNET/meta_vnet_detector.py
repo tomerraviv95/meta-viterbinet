@@ -1,9 +1,8 @@
-from typing import Dict
-
 from python_code.utils.trellis_utils import create_transition_table, acs_block
+from torch.nn import functional as F
+from typing import Dict
 import torch.nn as nn
 import torch
-from torch.nn import functional as F
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 HIDDEN1_SIZE = 100
