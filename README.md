@@ -6,7 +6,7 @@
 
 Python repository for the paper "Meta-ViterbiNet: Online Meta-Learned Viterbi Equalization for Non-Stationary Channels".
 
-Please cite our paper (*link will be here*), if the code is used for publishing research.
+Please cite our [paper](https://arxiv.org/abs/2103.13483), if the code is used for publishing research.
 
 # Table of Contents
 
