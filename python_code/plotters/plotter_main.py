@@ -96,11 +96,11 @@ def add_online_metarnn(all_curves, current_params):
 HYPERPARAMS_DICT = {'val_SNR_step': 2,
                     'train_SNR_step': 2,
                     'noisy_est_var': 0,
-                    'fading_taps_type': 2,
+                    'fading_taps_type': 1,
                     'fading_in_decoder': True,
                     'use_ecc': True,
                     'gamma': 0.2,
-                    'channel_type': 'ISI_AWGN',
+                    'channel_type': 'NON_LINEAR_ISI_AWGN',
                     'val_frames': 12,
                     'subframes_in_frame': 25,
                     'eval_mode': 'by_word',
@@ -112,16 +112,13 @@ HYPERPARAMS_DICT = {'val_SNR_step': 2,
 
 if __name__ == '__main__':
     run_over = False
-    plot_by_block = False  # either plot by block, or by SNR
+    plot_by_block = True  # either plot by block, or by SNR
 
-    parameters = [(7, 120),
-                  (8, 120),
-                  (9, 120),
-                  (10, 120),
-                  (11, 120),
-                  (12, 120)]
+    # parameters = [(7, 120), (8, 120), (9, 120), (10, 120), (11, 120), (12, 120)]
+    parameters = [(12, 120)]
+
     n_symbol = 2
-    channel_coefficients = 'cost2100'  # 'time_decay','cost2100'
+    channel_coefficients = 'time_decay'  # 'time_decay','cost2100'
     all_curves = []
 
     for snr, val_block_length in parameters:

@@ -1,5 +1,5 @@
 # general
-run_name: 'rnn_meta_training_120_2_channel1'
+run_name: 'training_model'
 
 # coding parameters
 use_ecc: True # Either run with/without ECC. values: [True, False].
@@ -19,10 +19,10 @@ gamma: 0.2 # gamma value for time decay fading
 # validation hyperparameters
 val_block_length: 120 # coherence block time. values: int.
 val_frames: 5 # number of validation frames. values: int.
-val_SNR_start: 10 # start SNR value. values: float.
-val_SNR_end: 10 # end SNR value. values: float.
+val_SNR_start: 14 # start SNR value. values: float.
+val_SNR_end: 14 # end SNR value. values: float.
 val_SNR_step: 1 # step. values: float.
-eval_mode: 'aggregated' # Type of evaluation. Per snr - 'aggregated', Per block - 'by_word'.
+eval_mode: 'by_word' # Type of evaluation. Per snr - 'aggregated', Per block - 'by_word'.
 
 # train hyperparameters
 train_block_length: 120 # coherence block time. values: int.

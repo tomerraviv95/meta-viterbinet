@@ -42,10 +42,7 @@ class VADetector(nn.Module):
     def compute_state_priors(self, h: np.ndarray) -> torch.Tensor:
         all_states_decimal = np.arange(self.n_states).astype(np.uint8).reshape(-1, 1)
         all_states_binary = np.unpackbits(all_states_decimal, axis=1).astype(int)
-        if self.channel_type == 'ISI_AWGN':
-            all_states_symbols = BPSKModulator.modulate(all_states_binary[:, -self.memory_length:])
-        else:
-            raise Exception('No such channel defined!!!')
+        all_states_symbols = BPSKModulator.modulate(all_states_binary[:, -self.memory_length:])
         state_priors = np.dot(all_states_symbols, h.T)
         return torch.Tensor(state_priors).to(device)
 
@@ -60,14 +57,11 @@ class VADetector(nn.Module):
             h = h[count].reshape(1, -1)
         # compute priors
         state_priors = self.compute_state_priors(h)
-        if self.channel_type == 'ISI_AWGN':
-            priors = y.unsqueeze(dim=2) - state_priors.T.repeat(
-                repeats=[y.shape[0] // state_priors.shape[1], 1]).unsqueeze(
-                dim=1)
-            # to llr representation
-            priors = priors ** 2 / 2 - math.log(math.sqrt(2 * math.pi))
-        else:
-            raise Exception('No such channel defined!!!')
+        priors = y.unsqueeze(dim=2) - state_priors.T.repeat(
+            repeats=[y.shape[0] // state_priors.shape[1], 1]).unsqueeze(
+            dim=1)
+        # to llr representation
+        priors = priors ** 2 / 2 - math.log(math.sqrt(2 * math.pi))
         return priors
 
     def forward(self, y: torch.Tensor, phase: str, snr: float = None, gamma: float = None,
