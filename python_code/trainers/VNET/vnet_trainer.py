@@ -62,5 +62,5 @@ class VNETTrainer(Trainer):
 
 if __name__ == '__main__':
     dec = VNETTrainer()
-    dec.train()
+    # dec.train()
     dec.evaluate()

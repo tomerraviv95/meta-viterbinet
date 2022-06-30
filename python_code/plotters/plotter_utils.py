@@ -1,47 +1,65 @@
-from python_code.utils.python_utils import load_pkl, save_pkl
-from python_code.trainers.trainer import Trainer
-from dir_definitions import FIGURES_DIR, PLOTS_DIR
 import datetime
+import math
 import os
 from typing import List, Tuple
+
 import matplotlib.pyplot as plt
 import numpy as np
-import math
+
+from dir_definitions import FIGURES_DIR, PLOTS_DIR
+from python_code.trainers.trainer import Trainer
+from python_code.utils.python_utils import load_pkl, save_pkl
 
 MIN_BER_COEF = 0.2
 MARKER_EVERY = 20
 
 COLORS_DICT = {'ViterbiNet': 'green',
+               'ViterbiNet - mismatched': 'green',
                'LSTM': 'green',
                'Joint': 'blue',
+               'Joint - mismatched': 'blue',
                'JointRNN': 'blue',
                'Viterbi': 'black',
                'OnlineRNN': 'red',
-               'OnlineMetaViterbiNet': 'red'}
+               'OnlineMetaViterbiNet': 'red',
+               'OnlineMetaViterbiNet - mismatched': 'red'
+               }
 
 MARKERS_DICT = {'ViterbiNet': 'd',
+                'ViterbiNet - mismatched': 'd',
                 'LSTM': 'd',
                 'Joint': 'x',
+                'Joint - mismatched': 'x',
                 'JointRNN': 'x',
                 'Viterbi': 'o',
                 'OnlineRNN': '.',
-                'OnlineMetaViterbiNet': '.'}
+                'OnlineMetaViterbiNet': '.',
+                'OnlineMetaViterbiNet - mismatched': '.'
+                }
 
 LINESTYLES_DICT = {'ViterbiNet': 'solid',
+                   'ViterbiNet - mismatched': 'dashdot',
                    'LSTM': 'dotted',
                    'Joint': 'solid',
+                   'Joint - mismatched': 'dashdot',
                    'JointRNN': 'dotted',
                    'Viterbi': 'solid',
                    'OnlineRNN': 'dotted',
-                   'OnlineMetaViterbiNet': 'solid'}
+                   'OnlineMetaViterbiNet': 'solid',
+                   'OnlineMetaViterbiNet - mismatched': 'dashdot'
+                   }
 
 METHOD_NAMES = {'ViterbiNet': 'Online ViterbiNet',
+                'ViterbiNet - mismatched': 'Online ViterbiNet - Mismatched SNRs',
                 'LSTM': 'Online LSTM',
                 'Joint': 'Joint ViterbiNet',
+                'Joint - mismatched': 'Joint ViterbiNet - Mismatched SNRs',
                 'JointRNN': 'Joint LSTM',
                 'Viterbi': 'Viterbi, full CSI',
                 'OnlineRNN': 'Meta-LSTM',
-                'OnlineMetaViterbiNet': 'Meta-ViterbiNet'}
+                'OnlineMetaViterbiNet': 'Meta-ViterbiNet',
+                'OnlineMetaViterbiNet - mismatched': 'Meta-ViterbiNet - Mismatched SNRs'
+                }
 
 
 def get_ser_plot(dec: Trainer, run_over: bool, method_name: str):
@@ -120,6 +138,8 @@ def plot_schematic(all_curves: List[Tuple[np.ndarray, np.ndarray, str]], snr_val
     for method_name in names:
         mean_sers = []
         key = method_name.split(' ')[0]
+        if 'Mismatched' in method_name:
+            key += '- mismatch'
         for ser, cur_name, val_block_length, n_symbol in all_curves:
             mean_ser = np.mean(ser)
             if cur_name != method_name:

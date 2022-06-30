@@ -32,6 +32,17 @@ def add_joint_viterbinet(all_curves, current_params):
     ser = get_ser_plot(dec, run_over=run_over, method_name=method_name + '_' + current_params)
     all_curves.append((ser, method_name, HYPERPARAMS_DICT['val_block_length'], HYPERPARAMS_DICT['n_symbols']))
 
+def add_mismatched_joint_viterbinet(all_curves, current_params):
+    dec = VNETTrainer(self_supervised=False,
+                      online_meta=False,
+                      weights_dir=os.path.join(WEIGHTS_DIR,
+                                               f'training_{HYPERPARAMS_DICT["val_block_length"]}_{HYPERPARAMS_DICT["n_symbols"]}_channel1_mismatched'),
+                      **HYPERPARAMS_DICT)
+    method_name = f'Joint ViterbiNet - Mismatched SNRs'
+    print(method_name)
+    ser = get_ser_plot(dec, run_over=run_over, method_name=method_name + '_' + current_params)
+    all_curves.append((ser, method_name, HYPERPARAMS_DICT['val_block_length'], HYPERPARAMS_DICT['n_symbols']))
+
 
 def add_joint_rnn(all_curves, current_params):
     dec = LSTMTrainer(self_supervised=False,
@@ -56,6 +67,16 @@ def add_viterbinet(all_curves, current_params):
     ser = get_ser_plot(dec, run_over=run_over, method_name=method_name + '_' + current_params)
     all_curves.append((ser, method_name, HYPERPARAMS_DICT['val_block_length'], HYPERPARAMS_DICT['n_symbols']))
 
+def add_mismatched_viterbinet(all_curves, current_params):
+    dec = VNETTrainer(self_supervised=True,
+                      online_meta=False,
+                      weights_dir=os.path.join(WEIGHTS_DIR,
+                                               f'training_{HYPERPARAMS_DICT["val_block_length"]}_{HYPERPARAMS_DICT["n_symbols"]}_channel1_mismatched'),
+                      **HYPERPARAMS_DICT)
+    method_name = f'ViterbiNet - Mismatched'
+    print(method_name)
+    ser = get_ser_plot(dec, run_over=run_over, method_name=method_name + '_' + current_params)
+    all_curves.append((ser, method_name, HYPERPARAMS_DICT['val_block_length'], HYPERPARAMS_DICT['n_symbols']))
 
 def add_rnn(all_curves, current_params):
     dec = LSTMTrainer(self_supervised=True,
@@ -76,6 +97,17 @@ def add_onlinemetaviterbinet(all_curves, current_params):
                                                    f'meta_training_{HYPERPARAMS_DICT["val_block_length"]}_{HYPERPARAMS_DICT["n_symbols"]}_channel1'),
                           **HYPERPARAMS_DICT)
     method_name = f'OnlineMetaViterbiNet'
+    print(method_name)
+    ser = get_ser_plot(dec, run_over=run_over, method_name=method_name + '_' + current_params)
+    all_curves.append((ser, method_name, HYPERPARAMS_DICT['val_block_length'], HYPERPARAMS_DICT['n_symbols']))
+
+def add_mismatched_onlinemetaviterbinet(all_curves, current_params):
+    dec = METAVNETTrainer(self_supervised=True,
+                          online_meta=True,
+                          weights_dir=os.path.join(WEIGHTS_DIR,
+                                                   f'meta_training_{HYPERPARAMS_DICT["val_block_length"]}_{HYPERPARAMS_DICT["n_symbols"]}_channel1_mismatched'),
+                          **HYPERPARAMS_DICT)
+    method_name = f'OnlineMetaViterbiNet - Mismatched'
     print(method_name)
     ser = get_ser_plot(dec, run_over=run_over, method_name=method_name + '_' + current_params)
     all_curves.append((ser, method_name, HYPERPARAMS_DICT['val_block_length'], HYPERPARAMS_DICT['n_symbols']))
@@ -112,10 +144,10 @@ HYPERPARAMS_DICT = {'val_SNR_step': 2,
 
 if __name__ == '__main__':
     run_over = False
-    plot_by_block = True  # either plot by block, or by SNR
+    plot_by_block = False  # either plot by block, or by SNR
 
-    # parameters = [(7, 120), (8, 120), (9, 120), (10, 120), (11, 120), (12, 120)]
-    parameters = [(12, 120)]
+    parameters = [(7, 120), (8, 120), (9, 120), (10, 120), (11, 120), (12, 120)]
+    # parameters = [(12, 120)]
 
     n_symbol = 2
     channel_coefficients = 'time_decay'  # 'time_decay','cost2100'
@@ -138,12 +170,15 @@ if __name__ == '__main__':
                          str(HYPERPARAMS_DICT['val_block_length']) + '_' + str(HYPERPARAMS_DICT['n_symbols'])
 
         add_joint_viterbinet(all_curves, current_params)
-        add_joint_rnn(all_curves, current_params)
+        add_mismatched_joint_viterbinet(all_curves, current_params)
+        # add_joint_rnn(all_curves, current_params)
         add_viterbinet(all_curves, current_params)
-        add_rnn(all_curves, current_params)
+        add_mismatched_viterbinet(all_curves, current_params)
+        # add_rnn(all_curves, current_params)
         add_onlinemetaviterbinet(all_curves, current_params)
-        add_online_metarnn(all_curves, current_params)
-        add_viterbi(all_curves, current_params)
+        add_mismatched_onlinemetaviterbinet(all_curves, current_params)
+        # add_online_metarnn(all_curves, current_params)
+        # add_viterbi(all_curves, current_params)
 
         if plot_by_block:
             plot_all_curves_aggregated(all_curves, val_block_length, n_symbol, snr)

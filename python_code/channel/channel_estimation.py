@@ -25,7 +25,7 @@ def estimate_channel(memory_length: int, gamma: float, channel_coefficients: str
     elif channel_coefficients == 'cost2100':
         total_h = np.empty([COST_LENGTH, memory_length])
         for i in range(memory_length):
-            total_h[:, i] = scipy.io.loadmat(os.path.join(COST2100_DIR, f'combined_h_{i}'))[
+            total_h[:, i] = scipy.io.loadmat(os.path.join(COST2100_DIR, f'h_{i}'))[
                 'h_channel_response_mag'].reshape(-1)
         h = np.reshape(total_h[index], [1, memory_length])
     else:
