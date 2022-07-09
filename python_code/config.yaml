@@ -37,8 +37,8 @@ loss_type: 'CrossEntropy' # Loss type. values: 'BCE','CrossEntropy','MSE'.
 optimizer_type: 'Adam' # Optimizer type. values: 'Adam','RMSprop','SGD'.
 
 # seed
-noise_seed: 3450002 # seed value. values: int.
-word_seed: 7860002 # seed value. values: int.
+noise_seed: 0 # 3450002 # seed value. values: int.
+word_seed: 0 # 7860002 # seed value. values: int.
 
 # self-supervised online training
 self_supervised: False # Whether to run the online training (as in ViterbiNet). values: [True, False].

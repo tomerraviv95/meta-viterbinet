@@ -32,6 +32,7 @@ def add_joint_viterbinet(all_curves, current_params):
     ser = get_ser_plot(dec, run_over=run_over, method_name=method_name + '_' + current_params)
     all_curves.append((ser, method_name, HYPERPARAMS_DICT['val_block_length'], HYPERPARAMS_DICT['n_symbols']))
 
+
 def add_mismatched_joint_viterbinet(all_curves, current_params):
     dec = VNETTrainer(self_supervised=False,
                       online_meta=False,
@@ -67,6 +68,7 @@ def add_viterbinet(all_curves, current_params):
     ser = get_ser_plot(dec, run_over=run_over, method_name=method_name + '_' + current_params)
     all_curves.append((ser, method_name, HYPERPARAMS_DICT['val_block_length'], HYPERPARAMS_DICT['n_symbols']))
 
+
 def add_mismatched_viterbinet(all_curves, current_params):
     dec = VNETTrainer(self_supervised=True,
                       online_meta=False,
@@ -77,6 +79,7 @@ def add_mismatched_viterbinet(all_curves, current_params):
     print(method_name)
     ser = get_ser_plot(dec, run_over=run_over, method_name=method_name + '_' + current_params)
     all_curves.append((ser, method_name, HYPERPARAMS_DICT['val_block_length'], HYPERPARAMS_DICT['n_symbols']))
+
 
 def add_rnn(all_curves, current_params):
     dec = LSTMTrainer(self_supervised=True,
@@ -100,6 +103,7 @@ def add_onlinemetaviterbinet(all_curves, current_params):
     print(method_name)
     ser = get_ser_plot(dec, run_over=run_over, method_name=method_name + '_' + current_params)
     all_curves.append((ser, method_name, HYPERPARAMS_DICT['val_block_length'], HYPERPARAMS_DICT['n_symbols']))
+
 
 def add_mismatched_onlinemetaviterbinet(all_curves, current_params):
     dec = METAVNETTrainer(self_supervised=True,
@@ -132,7 +136,7 @@ HYPERPARAMS_DICT = {'val_SNR_step': 2,
                     'fading_in_decoder': True,
                     'use_ecc': True,
                     'gamma': 0.2,
-                    'channel_type': 'NON_LINEAR_ISI_AWGN',
+                    'channel_type': 'ISI_AWGN', # NON_LINEAR_
                     'val_frames': 12,
                     'subframes_in_frame': 25,
                     'eval_mode': 'by_word',
@@ -150,7 +154,8 @@ if __name__ == '__main__':
     # parameters = [(12, 120)]
 
     n_symbol = 2
-    channel_coefficients = 'time_decay'  # 'time_decay','cost2100'
+    channel_coefficients = 'cost2100'  # 'time_decay','cost2100'
+    channel_type = 'ISI_AWGN' # ISI_AWGN, NON_LINEAR_ISI_AWGN
     all_curves = []
 
     for snr, val_block_length in parameters:
@@ -165,9 +170,13 @@ if __name__ == '__main__':
         HYPERPARAMS_DICT['train_block_length'] = val_block_length
         HYPERPARAMS_DICT['fading_in_channel'] = True if channel_coefficients == 'time_decay' else False
         HYPERPARAMS_DICT['channel_coefficients'] = channel_coefficients
+        HYPERPARAMS_DICT['channel_type'] = channel_type
 
-        current_params = HYPERPARAMS_DICT['channel_coefficients'] + '_' + str(HYPERPARAMS_DICT['val_SNR_start']) + '_' + \
-                         str(HYPERPARAMS_DICT['val_block_length']) + '_' + str(HYPERPARAMS_DICT['n_symbols'])
+        current_params = HYPERPARAMS_DICT['channel_coefficients'] + '_' + \
+                         str(HYPERPARAMS_DICT['channel_type']) + '_' + \
+                         str(HYPERPARAMS_DICT['val_SNR_start']) + '_' + \
+                         str(HYPERPARAMS_DICT['val_block_length']) + '_' +\
+                         str(HYPERPARAMS_DICT['n_symbols'])
 
         add_joint_viterbinet(all_curves, current_params)
         add_mismatched_joint_viterbinet(all_curves, current_params)

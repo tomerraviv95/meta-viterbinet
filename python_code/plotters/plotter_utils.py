@@ -14,51 +14,51 @@ MIN_BER_COEF = 0.2
 MARKER_EVERY = 20
 
 COLORS_DICT = {'ViterbiNet': 'green',
-               'ViterbiNet - mismatched': 'green',
+               'ViterbiNet - mismatch': 'green',
                'LSTM': 'green',
                'Joint': 'blue',
-               'Joint - mismatched': 'blue',
+               'Joint - mismatch': 'blue',
                'JointRNN': 'blue',
                'Viterbi': 'black',
                'OnlineRNN': 'red',
                'OnlineMetaViterbiNet': 'red',
-               'OnlineMetaViterbiNet - mismatched': 'red'
+               'OnlineMetaViterbiNet - mismatch': 'red'
                }
 
 MARKERS_DICT = {'ViterbiNet': 'd',
-                'ViterbiNet - mismatched': 'd',
+                'ViterbiNet - mismatch': 'd',
                 'LSTM': 'd',
                 'Joint': 'x',
-                'Joint - mismatched': 'x',
+                'Joint - mismatch': 'x',
                 'JointRNN': 'x',
                 'Viterbi': 'o',
                 'OnlineRNN': '.',
                 'OnlineMetaViterbiNet': '.',
-                'OnlineMetaViterbiNet - mismatched': '.'
+                'OnlineMetaViterbiNet - mismatch': '.'
                 }
 
 LINESTYLES_DICT = {'ViterbiNet': 'solid',
-                   'ViterbiNet - mismatched': 'dashdot',
+                   'ViterbiNet - mismatch': 'dashdot',
                    'LSTM': 'dotted',
                    'Joint': 'solid',
-                   'Joint - mismatched': 'dashdot',
+                   'Joint - mismatch': 'dashdot',
                    'JointRNN': 'dotted',
                    'Viterbi': 'solid',
                    'OnlineRNN': 'dotted',
                    'OnlineMetaViterbiNet': 'solid',
-                   'OnlineMetaViterbiNet - mismatched': 'dashdot'
+                   'OnlineMetaViterbiNet - mismatch': 'dashdot'
                    }
 
 METHOD_NAMES = {'ViterbiNet': 'Online ViterbiNet',
-                'ViterbiNet - mismatched': 'Online ViterbiNet - Mismatched SNRs',
+                'ViterbiNet - mismatch': 'Online ViterbiNet - Mismatched SNRs',
                 'LSTM': 'Online LSTM',
                 'Joint': 'Joint ViterbiNet',
-                'Joint - mismatched': 'Joint ViterbiNet - Mismatched SNRs',
+                'Joint - mismatch': 'Joint ViterbiNet - Mismatched SNRs',
                 'JointRNN': 'Joint LSTM',
                 'Viterbi': 'Viterbi, full CSI',
                 'OnlineRNN': 'Meta-LSTM',
                 'OnlineMetaViterbiNet': 'Meta-ViterbiNet',
-                'OnlineMetaViterbiNet - mismatched': 'Meta-ViterbiNet - Mismatched SNRs'
+                'OnlineMetaViterbiNet - mismatch': 'Meta-ViterbiNet - Mismatched SNRs'
                 }
 
 
@@ -139,7 +139,7 @@ def plot_schematic(all_curves: List[Tuple[np.ndarray, np.ndarray, str]], snr_val
         mean_sers = []
         key = method_name.split(' ')[0]
         if 'Mismatched' in method_name:
-            key += '- mismatch'
+            key += ' - mismatch'
         for ser, cur_name, val_block_length, n_symbol in all_curves:
             mean_ser = np.mean(ser)
             if cur_name != method_name:
