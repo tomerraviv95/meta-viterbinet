@@ -1,10 +1,10 @@
+from dir_definitions import DEVICE
 from python_code.utils.trellis_utils import create_transition_table, acs_block
 from torch.nn import functional as F
 from typing import Dict
 import torch.nn as nn
 import torch
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 HIDDEN1_SIZE = 100
 HIDDEN2_SIZE = 50
 
@@ -19,10 +19,10 @@ class META_VNETDetector(nn.Module):
         self.transmission_lengths = transmission_lengths
         self.n_states = n_states
         self.transition_table_array = create_transition_table(n_states)
-        self.transition_table = torch.Tensor(self.transition_table_array).to(device)
+        self.transition_table = torch.Tensor(self.transition_table_array).to(DEVICE)
 
     def forward(self, y: torch.Tensor, phase: str, var: list) -> torch.Tensor:
-        in_prob = torch.zeros([y.shape[0], self.n_states]).to(device)
+        in_prob = torch.zeros([y.shape[0], self.n_states]).to(DEVICE)
         # compute priors based on input list of NN paramters
         x = y.reshape(-1, 1)
         x = F.linear(x, var[0], var[1])
@@ -33,7 +33,7 @@ class META_VNETDetector(nn.Module):
         priors = x.reshape(y.shape[0], y.shape[1], self.n_states)
 
         if phase == 'val':
-            decoded_word = torch.zeros(y.shape).to(device)
+            decoded_word = torch.zeros(y.shape).to(DEVICE)
             for i in range(self.transmission_lengths['val']):
                 # get the lsb of the state
                 decoded_word[:, i] = torch.argmin(in_prob, dim=1) % 2

@@ -122,7 +122,7 @@ def plot_all_curves_aggregated(all_curves: List[Tuple[np.ndarray, np.ndarray, st
     plt.show()
 
 
-def plot_schematic(all_curves: List[Tuple[np.ndarray, np.ndarray, str]], snr_values: List[float]):
+def plot_schematic(all_curves: List[Tuple[np.ndarray, np.ndarray, str]], param_values: List[float], xlabel: str):
     # path for the saved figure
     current_day_time = datetime.datetime.now()
     folder_name = f'{current_day_time.month}-{current_day_time.day}-{current_day_time.hour}-{current_day_time.minute}'
@@ -145,12 +145,12 @@ def plot_schematic(all_curves: List[Tuple[np.ndarray, np.ndarray, str]], snr_val
             if cur_name != method_name:
                 continue
             mean_sers.append(mean_ser)
-        plt.plot(snr_values, mean_sers, label=METHOD_NAMES[key],
+        plt.plot(param_values, mean_sers, label=METHOD_NAMES[key],
                  color=COLORS_DICT[key], marker=MARKERS_DICT[key],
                  linestyle=LINESTYLES_DICT[key], linewidth=2.2)
 
-    plt.xticks(snr_values, snr_values)
-    plt.xlabel('SNR [dB]')
+    plt.xticks(param_values, param_values)
+    plt.xlabel(xlabel)
     plt.ylabel('Coded BER')
     plt.grid(which='both', ls='--')
     plt.legend(loc='lower left', prop={'size': 15})

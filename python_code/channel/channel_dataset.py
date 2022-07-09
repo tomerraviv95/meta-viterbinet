@@ -1,3 +1,4 @@
+from dir_definitions import DEVICE
 from python_code.channel.channel_estimation import estimate_channel
 from python_code.channel.modulator import BPSKModulator
 from python_code.channel.channel import ISIAWGNChannel, NONLINEARISIAWGNChannel
@@ -9,7 +10,6 @@ import concurrent.futures
 import numpy as np
 import torch
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 class ChannelModelDataset(Dataset):
@@ -105,7 +105,7 @@ class ChannelModelDataset(Dataset):
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
             [executor.submit(self.get_snr_data, snr, gamma, database) for snr in snr_list]
         b, y = (np.concatenate(arrays) for arrays in zip(*database))
-        b, y = torch.Tensor(b).to(device=device), torch.Tensor(y).to(device=device)
+        b, y = torch.Tensor(b).to(device=DEVICE), torch.Tensor(y).to(device=DEVICE)
         return b, y
 
     def __len__(self):

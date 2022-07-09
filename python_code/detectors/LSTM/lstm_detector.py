@@ -1,7 +1,7 @@
 import torch.nn as nn
 import torch
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+from dir_definitions import DEVICE
 
 INPUT_SIZE = 4
 HIDDEN_SIZE = 256
@@ -18,8 +18,8 @@ class LSTMDetector(nn.Module):
 
     def __init__(self):
         super(LSTMDetector, self).__init__()
-        self.lstm = nn.LSTM(INPUT_SIZE, HIDDEN_SIZE, NUM_LAYERS, batch_first=True, bidirectional=False).to(device)
-        self.fc = nn.Linear(HIDDEN_SIZE, N_CLASSES).to(device)
+        self.lstm = nn.LSTM(INPUT_SIZE, HIDDEN_SIZE, NUM_LAYERS, batch_first=True, bidirectional=False).to(DEVICE)
+        self.fc = nn.Linear(HIDDEN_SIZE, N_CLASSES).to(DEVICE)
 
     def forward(self, y: torch.Tensor, phase: str, snr: float = None, gamma: float = None,
                 count: int = None) -> torch.Tensor:
@@ -35,8 +35,8 @@ class LSTMDetector(nn.Module):
         batch_size, transmission_length = y.size(0), y.size(1)
 
         # Set initial states
-        h_n = torch.zeros(NUM_LAYERS, batch_size, HIDDEN_SIZE).to(device)
-        c_n = torch.zeros(NUM_LAYERS, batch_size, HIDDEN_SIZE).to(device)
+        h_n = torch.zeros(NUM_LAYERS, batch_size, HIDDEN_SIZE).to(DEVICE)
+        c_n = torch.zeros(NUM_LAYERS, batch_size, HIDDEN_SIZE).to(DEVICE)
 
         # pad and reshape y to the proper shape - (batch_size,seq_length,input_size)
         padded_y = torch.nn.functional.pad(y, [0, INPUT_SIZE - 1, 0, 0], value=START_VALUE_PADDING)
@@ -44,7 +44,7 @@ class LSTMDetector(nn.Module):
         sequence_y = sequence_y.transpose(1, 2)[:, :transmission_length]
 
         # Forward propagate LSTM - lstm_out: tensor of shape (batch_size, seq_length, hidden_size*2)
-        lstm_out = torch.zeros(batch_size, transmission_length, HIDDEN_SIZE).to(device)
+        lstm_out = torch.zeros(batch_size, transmission_length, HIDDEN_SIZE).to(DEVICE)
         for i in range(batch_size):
             lstm_out[i], _ = self.lstm(sequence_y[i].unsqueeze(0),
                                        (h_n[:, i].unsqueeze(1).contiguous(), c_n[:, i].unsqueeze(1).contiguous()))

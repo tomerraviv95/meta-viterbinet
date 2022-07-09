@@ -2,7 +2,7 @@ import torch.nn as nn
 import torch
 from torch.nn import functional as F
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+from dir_definitions import DEVICE
 
 INPUT_SIZE = 4
 HIDDEN_SIZE = 256
@@ -26,14 +26,14 @@ class MetaLSTMDetector(nn.Module):
         h_n_seq_layers = {}
         c_n_seq_layers = {}
         for ind_layer in range(NUM_LAYERS):
-            h_n_seq_layers[ind_layer] = [torch.zeros(batch_size, HIDDEN_SIZE).to(device)]
-            c_n_seq_layers[ind_layer] = [torch.zeros(batch_size, HIDDEN_SIZE).to(device)]
+            h_n_seq_layers[ind_layer] = [torch.zeros(batch_size, HIDDEN_SIZE).to(DEVICE)]
+            c_n_seq_layers[ind_layer] = [torch.zeros(batch_size, HIDDEN_SIZE).to(DEVICE)]
 
         padded_y = torch.nn.functional.pad(y, [0, INPUT_SIZE - 1, 0, 0], value=START_VALUE_PADDING)
         sequence_y = torch.cat([torch.roll(padded_y.unsqueeze(1), i, 2) for i in range(INPUT_SIZE - 1, -1, -1)],
                                dim=1)
         sequence_y = sequence_y.transpose(1, 2)[:, :transmission_length]
-        lstm_out = torch.zeros(batch_size, transmission_length, HIDDEN_SIZE).to(device)
+        lstm_out = torch.zeros(batch_size, transmission_length, HIDDEN_SIZE).to(DEVICE)
 
         # pass sequence through model
         for ind_seq in range(transmission_length):

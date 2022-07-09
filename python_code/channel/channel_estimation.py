@@ -1,11 +1,14 @@
 from python_code.plotters.plotter_config import *
-from dir_definitions import COST2100_DIR
+from dir_definitions import COST2100_DIR, NON_PERIODIC_PATH
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.io
 import os
 
+from python_code.utils.python_utils import load_pkl
+
 COST_LENGTH = 300
+NON_PERIODIC_CHANNEL_LENGTH = 200
 
 
 def estimate_channel(memory_length: int, gamma: float, channel_coefficients: str, noisy_est_var: float = 0,
@@ -28,6 +31,9 @@ def estimate_channel(memory_length: int, gamma: float, channel_coefficients: str
             total_h[:, i] = scipy.io.loadmat(os.path.join(COST2100_DIR, f'h_{i}'))[
                 'h_channel_response_mag'].reshape(-1)
         h = np.reshape(total_h[index], [1, memory_length])
+    elif channel_coefficients == 'non_periodic':
+        total_h = load_pkl(NON_PERIODIC_PATH + '.pickle')
+        h = np.reshape(total_h[index], [1, memory_length])
     else:
         raise ValueError('No such channel_coefficients value!!!')
 
@@ -47,6 +53,7 @@ def estimate_channel(memory_length: int, gamma: float, channel_coefficients: str
         else:
             raise ValueError("No such fading tap type!!!")
     return h
+
 
 ## get channels plot for paper
 if __name__ == '__main__':

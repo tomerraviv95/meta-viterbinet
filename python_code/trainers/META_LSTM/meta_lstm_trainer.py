@@ -4,7 +4,6 @@ from python_code.trainers.trainer import Trainer
 from python_code.utils.python_utils import copy_model
 import torch
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 class MetaLSTMTrainer(Trainer):

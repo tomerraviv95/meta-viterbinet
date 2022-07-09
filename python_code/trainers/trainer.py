@@ -1,7 +1,7 @@
 from python_code.channel.channel_dataset import ChannelModelDataset
 from python_code.ecc.rs_main import decode, encode
 from python_code.utils.metrics import calculate_error_rates
-from dir_definitions import CONFIG_PATH, WEIGHTS_DIR
+from dir_definitions import CONFIG_PATH, WEIGHTS_DIR, DEVICE
 from torch.nn import CrossEntropyLoss, BCELoss, MSELoss
 from python_code.utils.python_utils import copy_model
 from torch.optim import RMSprop, Adam, SGD
@@ -15,7 +15,6 @@ import os
 import math
 import copy
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 class Trainer(object):
@@ -176,11 +175,11 @@ class Trainer(object):
         else:
             raise NotImplementedError("No such optimizer implemented!!!")
         if self.loss_type == 'BCE':
-            self.criterion = BCELoss().to(device)
+            self.criterion = BCELoss().to(DEVICE)
         elif self.loss_type == 'CrossEntropy':
-            self.criterion = CrossEntropyLoss().to(device)
+            self.criterion = CrossEntropyLoss().to(DEVICE)
         elif self.loss_type == 'MSE':
-            self.criterion = MSELoss().to(device)
+            self.criterion = MSELoss().to(DEVICE)
         else:
             raise NotImplementedError("No such loss function implemented!!!")
 
@@ -233,7 +232,7 @@ class Trainer(object):
 
         if self.use_ecc:
             decoded_words = [decode(detected_word, self.n_symbols) for detected_word in detected_words.cpu().numpy()]
-            detected_words = torch.Tensor(decoded_words).to(device)
+            detected_words = torch.Tensor(decoded_words).to(DEVICE)
 
         ser, fer, err_indices = calculate_error_rates(detected_words[self.data_indices],
                                                       transmitted_words[self.data_indices])
@@ -275,19 +274,19 @@ class Trainer(object):
         self.saved_detector = copy.deepcopy(self.detector)
         # query for all detected words
         if self.buffer_empty:
-            buffer_rx = torch.empty([0, received_words.shape[1]]).to(device)
-            buffer_tx = torch.empty([0, received_words.shape[1]]).to(device)
-            buffer_ser = torch.empty([0]).to(device)
+            buffer_rx = torch.empty([0, received_words.shape[1]]).to(DEVICE)
+            buffer_tx = torch.empty([0, received_words.shape[1]]).to(DEVICE)
+            buffer_ser = torch.empty([0]).to(DEVICE)
         else:
             # draw words from different channels
             buffer_tx, buffer_rx = self.channel_dataset['train'].__getitem__(snr_list=[snr], gamma=gamma)
-            buffer_ser = torch.zeros(buffer_rx.shape[0]).to(device)
+            buffer_ser = torch.zeros(buffer_rx.shape[0]).to(DEVICE)
             buffer_tx = torch.cat([
-                torch.Tensor(encode(transmitted_word.int().cpu().numpy(), self.n_symbols).reshape(1, -1)).to(device) for
+                torch.Tensor(encode(transmitted_word.int().cpu().numpy(), self.n_symbols).reshape(1, -1)).to(DEVICE) for
                 transmitted_word in buffer_tx], dim=0)
 
-        support_idx = torch.arange(-self.window_size - 1, -1).long().to(device)
-        query_idx = -1 * torch.ones(1).long().to(device)
+        support_idx = torch.arange(-self.window_size - 1, -1).long().to(DEVICE)
+        query_idx = -1 * torch.ones(1).long().to(DEVICE)
 
         for count, (transmitted_word, received_word) in enumerate(zip(transmitted_words, received_words)):
             transmitted_word, received_word = transmitted_word.reshape(1, -1), received_word.reshape(1, -1)
@@ -296,12 +295,12 @@ class Trainer(object):
             if count in self.data_indices:
                 # decode
                 decoded_word = [decode(detected_word, self.n_symbols) for detected_word in detected_word.cpu().numpy()]
-                decoded_word = torch.Tensor(np.array(decoded_word)).to(device)
+                decoded_word = torch.Tensor(np.array(decoded_word)).to(DEVICE)
                 # calculate accuracy
                 ser, fer, err_indices = calculate_error_rates(decoded_word, transmitted_word)
                 # encode word again
                 decoded_word_array = decoded_word.int().cpu().numpy()
-                encoded_word = torch.Tensor(encode(decoded_word_array, self.n_symbols).reshape(1, -1)).to(device)
+                encoded_word = torch.Tensor(encode(decoded_word_array, self.n_symbols).reshape(1, -1)).to(DEVICE)
                 errors_num = torch.sum(torch.abs(encoded_word - detected_word)).item()
                 print('*' * 20)
                 print(f'current: {count, ser, errors_num}')
@@ -312,7 +311,7 @@ class Trainer(object):
                 print(f'current: {count}, Pilot')
                 # encode word again
                 decoded_word_array = transmitted_word.int().cpu().numpy()
-                encoded_word = torch.Tensor(encode(decoded_word_array, self.n_symbols).reshape(1, -1)).to(device)
+                encoded_word = torch.Tensor(encode(decoded_word_array, self.n_symbols).reshape(1, -1)).to(DEVICE)
                 ser = 0
 
             # save the encoded word in the buffer
@@ -322,7 +321,7 @@ class Trainer(object):
                                        detected_word.reshape(1, -1) if ser > 0 else
                                        encoded_word.reshape(1, -1)],
                                       dim=0)
-                buffer_ser = torch.cat([buffer_ser, torch.FloatTensor([ser]).to(device)])
+                buffer_ser = torch.cat([buffer_ser, torch.FloatTensor([ser]).to(DEVICE)])
                 if not self.buffer_empty:
                     buffer_rx = buffer_rx[1:]
                     buffer_tx = buffer_tx[1:]
@@ -335,7 +334,7 @@ class Trainer(object):
                 for i in range(self.meta_train_iterations):
                     j_hat_values = torch.unique(
                         torch.randint(low=0, high=buffer_rx.shape[0] - 2, size=[self.meta_j_num])).to(
-                        device)
+                        DEVICE)
                     for j_hat in j_hat_values:
                         cur_support_idx = j_hat + support_idx + 1
                         cur_query_idx = j_hat + query_idx + 1
@@ -399,14 +398,14 @@ class Trainer(object):
                 # draw words from different channels
                 transmitted_words, received_words = self.channel_dataset['train'].__getitem__(snr_list=[snr],
                                                                                               gamma=self.gamma)
-                support_idx = torch.arange(-self.window_size - 1, -1).long().to(device)
-                query_idx = -1 * torch.ones(1).long().to(device)
+                support_idx = torch.arange(-self.window_size - 1, -1).long().to(DEVICE)
+                query_idx = -1 * torch.ones(1).long().to(DEVICE)
                 j_hat_values = torch.unique(torch.randint(low=self.window_size,
                                                           high=transmitted_words.shape[0],
-                                                          size=[self.meta_j_num])).to(device)
+                                                          size=[self.meta_j_num])).to(DEVICE)
                 if self.use_ecc:
                     transmitted_words = torch.cat([torch.Tensor(
-                        encode(transmitted_word.int().cpu().numpy(), self.n_symbols).reshape(1, -1)).to(device)
+                        encode(transmitted_word.int().cpu().numpy(), self.n_symbols).reshape(1, -1)).to(DEVICE)
                                                    for transmitted_word in transmitted_words], dim=0)
 
                 loss_query = 0
@@ -540,5 +539,5 @@ class Trainer(object):
         :return: selected batch from the entire "epoch", contains both labels and the NN soft approximation
         """
         rand_ind = torch.multinomial(torch.arange(gt_examples.shape[0]).float(),
-                                     self.train_minibatch_size).long().to(device)
+                                     self.train_minibatch_size).long().to(DEVICE)
         return gt_examples[rand_ind], soft_estimation[rand_ind]

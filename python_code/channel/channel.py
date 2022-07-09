@@ -2,7 +2,6 @@ from numpy.random import mtrand
 import numpy as np
 import torch
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 W_SIGMA = 1
 

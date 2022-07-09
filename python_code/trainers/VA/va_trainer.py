@@ -1,12 +1,5 @@
-from typing import Union
 from python_code.detectors.VA.va_detector import VADetector
-from python_code.utils.metrics import calculate_error_rates
 from python_code.trainers.trainer import Trainer
-from python_code.ecc.rs_main import decode
-import numpy as np
-import torch
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 class VATrainer(Trainer):

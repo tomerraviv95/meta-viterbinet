@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+from dir_definitions import DEVICE
 
 
 def create_transition_table(n_states: int) -> np.ndarray:
@@ -37,10 +37,10 @@ def calculate_states(memory_length: int, transmitted_words: torch.Tensor) -> tor
     :param transmitted_words: channel transmitted words
     :return: vector of length of transmitted_words with values in the range of 0,1,...,n_states-1
     """
-    padded = torch.cat([transmitted_words, torch.zeros([transmitted_words.shape[0], memory_length]).to(device)], dim=1)
+    padded = torch.cat([transmitted_words, torch.zeros([transmitted_words.shape[0], memory_length]).to(DEVICE)], dim=1)
     unsqueezed_padded = padded.unsqueeze(dim=1)
     blockwise_words = torch.cat([unsqueezed_padded[:, :, i:-memory_length + i] for i in range(memory_length)], dim=1)
-    states_enumerator = (2 ** torch.arange(memory_length)).reshape(1, -1).float().to(device)
+    states_enumerator = (2 ** torch.arange(memory_length)).reshape(1, -1).float().to(DEVICE)
     gt_states = torch.sum(blockwise_words.transpose(1, 2).reshape(-1, memory_length) * states_enumerator,
                           dim=1).long()
     return gt_states

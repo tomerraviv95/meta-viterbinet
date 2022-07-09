@@ -3,7 +3,6 @@ from python_code.utils.trellis_utils import calculate_states
 from python_code.trainers.trainer import Trainer
 import torch
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 class VNETTrainer(Trainer):

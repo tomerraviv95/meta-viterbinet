@@ -1,3 +1,4 @@
+from dir_definitions import DEVICE
 from python_code.channel.channel_estimation import estimate_channel
 from python_code.channel.modulator import BPSKModulator
 import numpy as np
@@ -7,7 +8,6 @@ import math
 
 from python_code.utils.trellis_utils import create_transition_table, acs_block
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 class VADetector(nn.Module):
@@ -37,14 +37,14 @@ class VADetector(nn.Module):
         self.fading_taps_type = fading_taps_type
         self.channel_coefficients = channel_coefficients
         self.transition_table_array = create_transition_table(n_states)
-        self.transition_table = torch.Tensor(self.transition_table_array).to(device)
+        self.transition_table = torch.Tensor(self.transition_table_array).to(DEVICE)
 
     def compute_state_priors(self, h: np.ndarray) -> torch.Tensor:
         all_states_decimal = np.arange(self.n_states).astype(np.uint8).reshape(-1, 1)
         all_states_binary = np.unpackbits(all_states_decimal, axis=1).astype(int)
         all_states_symbols = BPSKModulator.modulate(all_states_binary[:, -self.memory_length:])
         state_priors = np.dot(all_states_symbols, h.T)
-        return torch.Tensor(state_priors).to(device)
+        return torch.Tensor(state_priors).to(DEVICE)
 
     def compute_likelihood_priors(self, y: torch.Tensor, snr: float, gamma: float, phase: str, count: int = None):
         # estimate channel per word (only changes between the h's if fading is True)
@@ -75,13 +75,13 @@ class VADetector(nn.Module):
         :returns tensor of detected word, same shape as y
         """
         # initialize input probabilities
-        in_prob = torch.zeros([y.shape[0], self.n_states]).to(device)
+        in_prob = torch.zeros([y.shape[0], self.n_states]).to(DEVICE)
 
         # compute transition likelihood priors
         priors = self.compute_likelihood_priors(y, snr, gamma, phase, count)
 
         if phase == 'val':
-            decoded_word = torch.zeros(y.shape).to(device)
+            decoded_word = torch.zeros(y.shape).to(DEVICE)
             for i in range(self.transmission_length):
                 # get the lsb of the state
                 decoded_word[:, i] = torch.argmin(in_prob, dim=1) % 2

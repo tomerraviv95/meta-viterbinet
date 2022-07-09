@@ -2,8 +2,6 @@ from python_code.detectors.LSTM.lstm_detector import LSTMDetector
 from python_code.trainers.trainer import Trainer
 import torch
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
 
 class LSTMTrainer(Trainer):
     """
