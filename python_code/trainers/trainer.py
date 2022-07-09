@@ -296,7 +296,7 @@ class Trainer(object):
             if count in self.data_indices:
                 # decode
                 decoded_word = [decode(detected_word, self.n_symbols) for detected_word in detected_word.cpu().numpy()]
-                decoded_word = torch.Tensor(decoded_word).to(device)
+                decoded_word = torch.Tensor(np.array(decoded_word)).to(device)
                 # calculate accuracy
                 ser, fer, err_indices = calculate_error_rates(decoded_word, transmitted_word)
                 # encode word again
