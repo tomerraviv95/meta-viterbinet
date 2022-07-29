@@ -8,7 +8,7 @@ n_symbols: 2 # Number of symbols in ECC, each one is hard-coded 8 bits. values: 
 # channel
 memory_length: 4 # Memory length of the channel. values: int. Tested with values <=4.
 channel_type: 'ISI_AWGN' # Channel type. For this paper, we only used ISI AWGN. values: ['ISI_AWGN','NON_LINEAR_ISI_AWGN'].
-channel_coefficients: 'non_periodic' # The taps of the channel. values: ['time_decay','cost2100','non_periodic'].
+channel_coefficients: 'time_decay' # The taps of the channel. values: ['time_decay','cost2100','non_periodic'].
 noisy_est_var: 0 # Adds noise to channel taps, with variance set by this value and zero mean. values: int.
 fading_in_channel: False # If the channel is fading/non-fading. values: [True, False]
 fading_in_decoder: False # If the decoder is aware of the fading, only used in the full-CSI VA. values: [True, False]

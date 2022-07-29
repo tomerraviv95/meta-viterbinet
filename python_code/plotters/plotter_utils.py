@@ -22,7 +22,7 @@ COLORS_DICT = {'ViterbiNet': 'green',
                'Viterbi': 'black',
                'OnlineRNN': 'red',
                'OnlineMetaViterbiNet': 'red',
-               'OnlineMetaViterbiNet - mismatch': 'red'
+               'OnlineMetaViterbiNet - mismatch': 'orange'
                }
 
 MARKERS_DICT = {'ViterbiNet': 'd',
