@@ -200,7 +200,7 @@ HYPERPARAMS_DICT = {'val_SNR_step': 2,
                     }
 
 if __name__ == '__main__':
-    run_over = True
+    run_over = False
     plot_by_block = False  # either plot by block, or by SNR
     plot_type = 'plot_by_meta_frames'
 
@@ -208,23 +208,24 @@ if __name__ == '__main__':
         parameters = [7, 8, 9, 10, 11, 12]
         xlabel = 'SNR [dB]'
     elif plot_type == 'plot_by_meta_frames':
-        parameters = [5, 20, 40, 60]
+        parameters = [5, 10, 15, 20]
         snr = 10
         xlabel = 'Meta-Learning Frequency F'
     elif plot_type == 'plot_by_self_supervised_iterations':
         parameters = [7, 8, 9, 10, 11, 12]
-        self_supervised_iterations = 50
         xlabel = 'SNR [dB]'
     elif plot_type == 'plot_non_periodic':
         parameters = [8, 9, 10, 11, 12, 13]
         xlabel = 'SNR [dB]'
         val_frames = 8
+        noise_seed = 10
+        word_seed = 10
     else:
         raise ValueError("No such plot type!!!")
     n_symbol = 2
     val_block_length = 120
     channel_coefficients = 'time_decay'  # 'time_decay','cost2100','non_periodic'
-    channel_type = 'NON_LINEAR_ISI_AWGN'  # ISI_AWGN, NON_LINEAR_ISI_AWGN
+    channel_type = 'ISI_AWGN'  # ISI_AWGN, NON_LINEAR_ISI_AWGN
     all_curves = []
 
     for params in parameters:
@@ -246,13 +247,14 @@ if __name__ == '__main__':
             HYPERPARAMS_DICT['val_SNR_end'] = params
             HYPERPARAMS_DICT['train_SNR_start'] = params
             HYPERPARAMS_DICT['train_SNR_end'] = params
-            HYPERPARAMS_DICT['self_supervised_iterations'] = self_supervised_iterations
         elif plot_type == 'plot_non_periodic':
             HYPERPARAMS_DICT['val_SNR_start'] = params
             HYPERPARAMS_DICT['val_SNR_end'] = params
             HYPERPARAMS_DICT['train_SNR_start'] = params
             HYPERPARAMS_DICT['train_SNR_end'] = params
             HYPERPARAMS_DICT['val_frames'] = val_frames
+            HYPERPARAMS_DICT['word_seed'] = word_seed
+            HYPERPARAMS_DICT['noise_seed'] = noise_seed
         else:
             raise ValueError("No such plot type!!!")
 
@@ -263,30 +265,43 @@ if __name__ == '__main__':
         HYPERPARAMS_DICT['channel_coefficients'] = channel_coefficients
         HYPERPARAMS_DICT['channel_type'] = channel_type
 
-        if plot_type == 'plot_by_SNR' or plot_type == 'plot_by_meta_frames' or plot_type == 'plot_non_periodic':
+        if plot_type == 'plot_by_SNR' or plot_type == 'plot_non_periodic':
             current_params = HYPERPARAMS_DICT['channel_coefficients'] + '_' + \
                              str(HYPERPARAMS_DICT['channel_type']) + '_' + \
                              str(HYPERPARAMS_DICT['val_SNR_start']) + '_' + \
                              str(HYPERPARAMS_DICT['val_block_length']) + '_' + \
                              str(HYPERPARAMS_DICT['n_symbols']) + '_' + \
                              str(HYPERPARAMS_DICT['meta_subframes'])
+            add_viterbinet(all_curves, current_params, trial_num=1)
+            add_onlinemetaviterbinet(all_curves, current_params, trial_num=1)
+        elif plot_type == 'plot_by_meta_frames':
+            current_params1 = HYPERPARAMS_DICT['channel_coefficients'] + '_' + \
+                              str(HYPERPARAMS_DICT['channel_type']) + '_' + \
+                              str(HYPERPARAMS_DICT['val_SNR_start']) + '_' + \
+                              str(HYPERPARAMS_DICT['val_block_length']) + '_' + \
+                              str(HYPERPARAMS_DICT['n_symbols'])
+            current_params2 = current_params1 + '_' + str(HYPERPARAMS_DICT['meta_subframes'])
+            add_viterbinet(all_curves, current_params1, trial_num=3)
+            add_onlinemetaviterbinet(all_curves, current_params2, trial_num=3)
         elif plot_type == 'plot_by_self_supervised_iterations':
+            HYPERPARAMS_DICT['self_supervised_iterations'] = 200
             current_params = HYPERPARAMS_DICT['channel_coefficients'] + '_' + \
                              str(HYPERPARAMS_DICT['channel_type']) + '_' + \
                              str(HYPERPARAMS_DICT['val_SNR_start']) + '_' + \
                              str(HYPERPARAMS_DICT['val_block_length']) + '_' + \
-                             str(HYPERPARAMS_DICT['n_symbols']) + '_' + \
-                             str(HYPERPARAMS_DICT['self_supervised_iterations'])
+                             str(HYPERPARAMS_DICT['n_symbols'])
+            add_viterbinet(all_curves, current_params, trial_num=3)
+            HYPERPARAMS_DICT['self_supervised_iterations'] = 50
+            current_params2 = current_params + '_' + str(HYPERPARAMS_DICT['self_supervised_iterations'])
+            add_onlinemetaviterbinet(all_curves, current_params2, trial_num=3)
         else:
             raise ValueError("No such plot type!!!")
 
         # add_joint_viterbinet(all_curves, current_params)
         # add_mismatched_joint_viterbinet(all_curves, current_params)
         # add_joint_rnn(all_curves, current_params)
-        # add_viterbinet(all_curves, current_params, trial_num=3)
         # add_mismatched_viterbinet(all_curves, current_params)
         # add_rnn(all_curves, current_params)
-        add_onlinemetaviterbinet(all_curves, current_params, trial_num=1)
         # add_mismatched_onlinemetaviterbinet(all_curves, current_params, trial_num=1)
         # add_online_metarnn(all_curves, current_params)
         # add_viterbi(all_curves, current_params)

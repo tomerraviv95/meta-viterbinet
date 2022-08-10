@@ -63,7 +63,7 @@ if __name__ == '__main__':
     channel_coefficients = 'cost2100'  # 'time_decay','cost2100'
     fading_taps_type = 1
     fading = False
-    channel_length = 100
+    channel_length = 300
 
     total_h = np.empty([channel_length, memory_length])
     for index in range(channel_length):
