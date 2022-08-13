@@ -96,12 +96,11 @@ def plot_all_curves_aggregated(all_curves: List[Tuple[np.ndarray, np.ndarray, st
     min_ber = math.inf
     max_block_ind = -math.inf
     # iterate all curves, plot each one
-    for ser, method_name, _, _ in all_curves:
+    for avg_ser, ser_plot, method_name, _, _ in all_curves:
         print(method_name)
-        print(len(ser))
-        block_range = np.arange(1, len(ser) + 1)
+        block_range = np.arange(1, len(ser_plot) + 1)
         key = method_name.split(' ')[0]
-        agg_ser = (np.cumsum(ser) / np.arange(1, len(ser) + 1))
+        agg_ser = (np.cumsum(ser_plot) / np.arange(1, len(ser_plot) + 1))
         plt.plot(block_range, agg_ser,
                  label=METHOD_NAMES[key],
                  color=COLORS_DICT[key], marker=MARKERS_DICT[key],
@@ -132,15 +131,15 @@ def plot_schematic(all_curves: List[Tuple[np.ndarray, np.ndarray, str]], param_v
     plt.figure()
     names = []
     for i in range(len(all_curves)):
-        if all_curves[i][1] not in names:
-            names.append(all_curves[i][1])
+        if all_curves[i][2] not in names:
+            names.append(all_curves[i][2])
 
     for method_name in names:
         mean_sers = []
         key = method_name.split(' ')[0]
         if 'Mismatched' in method_name:
             key += ' - mismatch'
-        for ser, cur_name, val_block_length, n_symbol in all_curves:
+        for ser, ser_plot, cur_name, val_block_length, n_symbol in all_curves:
             mean_ser = np.mean(ser)
             if cur_name != method_name:
                 continue

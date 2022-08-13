@@ -38,24 +38,8 @@ def add_joint_viterbinet(all_curves, current_params, trial_num=5):
         ser = get_ser_plot(dec, run_over=run_over, method_name=method_name + '_' + current_params + '_' + str(trial))
         total_ser.append(ser)
     avg_ser = np.average(total_ser)
-    all_curves.append((avg_ser, method_name, HYPERPARAMS_DICT['val_block_length'], HYPERPARAMS_DICT['n_symbols']))
-
-
-def add_mismatched_joint_viterbinet(all_curves, current_params, trial_num=5):
-    total_ser = []
-    method_name = f'Joint ViterbiNet - Mismatched SNRs'
-    for trial in range(trial_num):
-        dec = VNETTrainer(self_supervised=False,
-                          online_meta=False,
-                          weights_dir=os.path.join(WEIGHTS_DIR,
-                                                   f'training_{HYPERPARAMS_DICT["val_block_length"]}_{HYPERPARAMS_DICT["n_symbols"]}_channel1_mismatched'),
-                          seed=trial + 1,
-                          **HYPERPARAMS_DICT)
-        print(method_name)
-        ser = get_ser_plot(dec, run_over=run_over, method_name=method_name + '_' + current_params + '_' + str(trial))
-        total_ser.append(ser)
-    avg_ser = np.average(total_ser)
-    all_curves.append((avg_ser, method_name, HYPERPARAMS_DICT['val_block_length'], HYPERPARAMS_DICT['n_symbols']))
+    all_curves.append(
+        (avg_ser, total_ser[-1], method_name, HYPERPARAMS_DICT['val_block_length'], HYPERPARAMS_DICT['n_symbols']))
 
 
 def add_joint_rnn(all_curves, current_params, trial_num=5):
@@ -72,7 +56,8 @@ def add_joint_rnn(all_curves, current_params, trial_num=5):
         ser = get_ser_plot(dec, run_over=run_over, method_name=method_name + '_' + current_params + '_' + str(trial))
         total_ser.append(ser)
     avg_ser = np.average(total_ser)
-    all_curves.append((avg_ser, method_name, HYPERPARAMS_DICT['val_block_length'], HYPERPARAMS_DICT['n_symbols']))
+    all_curves.append(
+        (avg_ser, total_ser[-1], method_name, HYPERPARAMS_DICT['val_block_length'], HYPERPARAMS_DICT['n_symbols']))
 
 
 def add_viterbinet(all_curves, current_params, trial_num=5):
@@ -89,24 +74,8 @@ def add_viterbinet(all_curves, current_params, trial_num=5):
         ser = get_ser_plot(dec, run_over=run_over, method_name=method_name + '_' + current_params + '_' + str(trial))
         total_ser.append(ser)
     avg_ser = np.average(total_ser)
-    all_curves.append((avg_ser, method_name, HYPERPARAMS_DICT['val_block_length'], HYPERPARAMS_DICT['n_symbols']))
-
-
-def add_mismatched_viterbinet(all_curves, current_params, trial_num=5):
-    total_ser = []
-    method_name = f'ViterbiNet - Mismatched'
-    for trial in range(trial_num):
-        dec = VNETTrainer(self_supervised=True,
-                          online_meta=False,
-                          weights_dir=os.path.join(WEIGHTS_DIR,
-                                                   f'training_{HYPERPARAMS_DICT["val_block_length"]}_{HYPERPARAMS_DICT["n_symbols"]}_channel1_mismatched'),
-                          seed=trial + 1,
-                          **HYPERPARAMS_DICT)
-        print(method_name)
-        ser = get_ser_plot(dec, run_over=run_over, method_name=method_name + '_' + current_params + '_' + str(trial))
-        total_ser.append(ser)
-    avg_ser = np.average(total_ser)
-    all_curves.append((avg_ser, method_name, HYPERPARAMS_DICT['val_block_length'], HYPERPARAMS_DICT['n_symbols']))
+    all_curves.append(
+        (avg_ser, total_ser[-1], method_name, HYPERPARAMS_DICT['val_block_length'], HYPERPARAMS_DICT['n_symbols']))
 
 
 def add_rnn(all_curves, current_params, trial_num=5):
@@ -123,7 +92,8 @@ def add_rnn(all_curves, current_params, trial_num=5):
         ser = get_ser_plot(dec, run_over=run_over, method_name=method_name + '_' + current_params + '_' + str(trial))
         total_ser.append(ser)
     avg_ser = np.average(total_ser)
-    all_curves.append((avg_ser, method_name, HYPERPARAMS_DICT['val_block_length'], HYPERPARAMS_DICT['n_symbols']))
+    all_curves.append(
+        (avg_ser, total_ser[-1], method_name, HYPERPARAMS_DICT['val_block_length'], HYPERPARAMS_DICT['n_symbols']))
 
 
 def add_onlinemetaviterbinet(all_curves, current_params, trial_num=5):
@@ -140,24 +110,8 @@ def add_onlinemetaviterbinet(all_curves, current_params, trial_num=5):
         ser = get_ser_plot(dec, run_over=run_over, method_name=method_name + '_' + current_params + '_' + str(trial))
         total_ser.append(ser)
     avg_ser = np.average(total_ser)
-    all_curves.append((avg_ser, method_name, HYPERPARAMS_DICT['val_block_length'], HYPERPARAMS_DICT['n_symbols']))
-
-
-def add_mismatched_onlinemetaviterbinet(all_curves, current_params, trial_num=5):
-    total_ser = []
-    method_name = f'OnlineMetaViterbiNet - Mismatched'
-    for trial in range(trial_num):
-        dec = METAVNETTrainer(self_supervised=True,
-                              online_meta=True,
-                              weights_dir=os.path.join(WEIGHTS_DIR,
-                                                       f'meta_training_{HYPERPARAMS_DICT["val_block_length"]}_{HYPERPARAMS_DICT["n_symbols"]}_channel1_mismatched'),
-                              seed=trial + 1,
-                              **HYPERPARAMS_DICT)
-        print(method_name)
-        ser = get_ser_plot(dec, run_over=run_over, method_name=method_name + '_' + current_params + '_' + str(trial))
-        total_ser.append(ser)
-    avg_ser = np.average(total_ser)
-    all_curves.append((avg_ser, method_name, HYPERPARAMS_DICT['val_block_length'], HYPERPARAMS_DICT['n_symbols']))
+    all_curves.append(
+        (avg_ser, total_ser[-1], method_name, HYPERPARAMS_DICT['val_block_length'], HYPERPARAMS_DICT['n_symbols']))
 
 
 def add_online_metarnn(all_curves, current_params, trial_num=5):
@@ -174,7 +128,8 @@ def add_online_metarnn(all_curves, current_params, trial_num=5):
         ser = get_ser_plot(dec, run_over=run_over, method_name=method_name + '_' + current_params + '_' + str(trial))
         total_ser.append(ser)
     avg_ser = np.average(total_ser)
-    all_curves.append((avg_ser, method_name, HYPERPARAMS_DICT['val_block_length'], HYPERPARAMS_DICT['n_symbols']))
+    all_curves.append(
+        (avg_ser, total_ser[-1], method_name, HYPERPARAMS_DICT['val_block_length'], HYPERPARAMS_DICT['n_symbols']))
 
 
 HYPERPARAMS_DICT = {'val_SNR_step': 2,
@@ -208,8 +163,9 @@ if __name__ == '__main__':
         parameters = [7, 8, 9, 10, 11, 12]
         xlabel = 'SNR [dB]'
     elif plot_type == 'plot_by_meta_frames':
-        parameters = [5, 10, 15, 20]
+        parameters = [5, 10, 15, 25, 35, 50]
         snr = 10
+        val_frames = 40
         xlabel = 'Meta-Learning Frequency F'
     elif plot_type == 'plot_by_self_supervised_iterations':
         parameters = [7, 8, 9, 10, 11, 12]
@@ -241,6 +197,7 @@ if __name__ == '__main__':
             HYPERPARAMS_DICT['val_SNR_end'] = snr
             HYPERPARAMS_DICT['train_SNR_start'] = snr
             HYPERPARAMS_DICT['train_SNR_end'] = snr
+            HYPERPARAMS_DICT['val_frames'] = val_frames
             HYPERPARAMS_DICT['meta_subframes'] = params
         elif plot_type == 'plot_by_self_supervised_iterations':
             HYPERPARAMS_DICT['val_SNR_start'] = params
@@ -296,15 +253,6 @@ if __name__ == '__main__':
             add_onlinemetaviterbinet(all_curves, current_params2, trial_num=3)
         else:
             raise ValueError("No such plot type!!!")
-
-        # add_joint_viterbinet(all_curves, current_params)
-        # add_mismatched_joint_viterbinet(all_curves, current_params)
-        # add_joint_rnn(all_curves, current_params)
-        # add_mismatched_viterbinet(all_curves, current_params)
-        # add_rnn(all_curves, current_params)
-        # add_mismatched_onlinemetaviterbinet(all_curves, current_params, trial_num=1)
-        # add_online_metarnn(all_curves, current_params)
-        # add_viterbi(all_curves, current_params)
 
         if plot_by_block:
             plot_all_curves_aggregated(all_curves, val_block_length, n_symbol, snr)
